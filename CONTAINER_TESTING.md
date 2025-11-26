@@ -334,6 +334,34 @@ docker compose -f docker-compose.build.yml down
 
 ---
 
+## Тестирование без ClickHouse
+
+Для тестирования конфигурации без ClickHouse (web, worker, postgres, redis) используйте `docker-compose.no-clickhouse.yml`.
+
+Подробные инструкции находятся в [NO_CLICKHOUSE_SETUP.md](./NO_CLICKHOUSE_SETUP.md).
+
+### Быстрый старт (без ClickHouse)
+
+```bash
+# Скопируйте .env файл
+cp .env.no-clickhouse.example .env
+
+# Соберите и запустите контейнеры
+docker compose -f docker-compose.no-clickhouse.yml up -d --build
+
+# Подождите инициализации
+sleep 15
+
+# Проверьте health endpoints
+curl -f http://localhost:3030/api/health
+curl -f http://localhost:3000/api/public/health
+
+# Остановите контейнеры
+docker compose -f docker-compose.no-clickhouse.yml down
+```
+
+---
+
 ## Быстрая справка
 
 ### Сборка worker
