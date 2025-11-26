@@ -39,6 +39,7 @@ services:
       REDIS_AUTH: ${REDIS_AUTH:-myredissecret}
       REDIS_TLS_ENABLED: ${REDIS_TLS_ENABLED:-false}
     restart: always
+    entrypoint: ["./web/entrypoint.no-clickhouse.sh"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/public/health"]
       interval: 30s
@@ -85,6 +86,7 @@ services:
       REDIS_AUTH: ${REDIS_AUTH:-myredissecret}
       REDIS_TLS_ENABLED: ${REDIS_TLS_ENABLED:-false}
     restart: always
+    entrypoint: ["./worker/entrypoint.no-clickhouse.sh"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3030/api/health"]
       interval: 30s

@@ -32,30 +32,7 @@ docker build \
 cp .env.no-clickhouse.example .env
 ```
 
-### 3. Модификация entrypoint (если нужно)
-
-Если стандартный entrypoint требует ClickHouse, используйте модифицированный:
-
-```bash
-# Для web контейнера
-cp web/entrypoint.no-clickhouse.sh web/entrypoint.sh
-chmod +x web/entrypoint.sh
-
-# Для worker контейнера (обычно не требуется)
-cp worker/entrypoint.no-clickhouse.sh worker/entrypoint.sh
-chmod +x worker/entrypoint.sh
-```
-
-**Или** модифицируйте Dockerfile чтобы использовать модифицированный entrypoint:
-
-```dockerfile
-# В Dockerfile замените:
-COPY --chown=nextjs:nodejs ./web/entrypoint.sh ./web/entrypoint.sh
-# На:
-COPY --chown=nextjs:nodejs ./web/entrypoint.no-clickhouse.sh ./web/entrypoint.sh
-```
-
-### 4. Запуск всех сервисов
+### 3. Запуск всех сервисов
 
 ```bash
 # Запуск postgres, redis, web, worker
@@ -138,14 +115,7 @@ if [ ! -f .env ]; then
     echo "✅ Конфигурация создана"
 fi
 
-# 2. Модификация entrypoint (если нужно)
-if [ -f web/entrypoint.no-clickhouse.sh ]; then
-    echo "📝 Использование модифицированного entrypoint для web..."
-    cp web/entrypoint.no-clickhouse.sh web/entrypoint.sh
-    chmod +x web/entrypoint.sh
-fi
-
-# 3. Сборка worker
+# 2. Сборка worker
 echo "🔨 Сборка langfuse-worker..."
 export NEXT_PUBLIC_BUILD_ID=$(git rev-parse --short HEAD)
 docker compose -f docker-compose.no-clickhouse.yml build langfuse-worker
