@@ -96,7 +96,8 @@
       "glob": "^11.1.0",
       "brace-expansion": "^2.0.2",
       "tar": "^7.5.2",
-      "esbuild": "^0.25.0"
+      "esbuild": "^0.25.0",
+      "kysely": "^0.28.8"
     },
     "patchedDependencies": {
       "next-auth@4.24.12": "patches/next-auth@4.24.12.patch"
