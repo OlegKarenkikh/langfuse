@@ -19,5 +19,11 @@ if [ -z "$DATABASE_URL" ]; then
     fi
 fi
 
+# Check if CLICKHOUSE_URL is not set
+if [ "$SKIP_CLICKHOUSE_MIGRATIONS" != "true" ] && [ -z "$CLICKHOUSE_URL" ]; then
+    echo "Error: CLICKHOUSE_URL is not configured. Migrating from V2? Check out migration guide: https://langfuse.com/self-hosting/upgrade-guides/upgrade-v2-to-v3"
+    exit 1
+fi
+
 # Run the command passed to the docker image on start
 exec "$@"

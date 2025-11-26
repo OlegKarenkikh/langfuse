@@ -1,0 +1,93 @@
+services:
+  langfuse-worker:
+    build:
+      context: .
+      dockerfile: ./worker/Dockerfile
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3030:3030"
+    environment:
+      - NODE_ENV=development
+      - NEXTAUTH_URL=http://localhost:3000
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
+      - CLICKHOUSE_URL=http://dummy:8123
+      - CLICKHOUSE_USER=dummy
+      - CLICKHOUSE_PASSWORD=dummy
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_AUTH=myredissecret
+      - SKIP_CLICKHOUSE_MIGRATIONS=true
+    networks:
+      - default
+
+  langfuse-web:
+    build:
+      context: .
+      dockerfile: ./web/Dockerfile
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXTAUTH_URL=http://localhost:3000
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
+      - CLICKHOUSE_URL=http://dummy:8123
+      - CLICKHOUSE_USER=dummy
+      - CLICKHOUSE_PASSWORD=dummy
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_AUTH=myredissecret
+      - NEXTAUTH_SECRET=mysecret
+      - SKIP_CLICKHOUSE_MIGRATIONS=true
+    networks:
+      - default
+
+  redis:
+    image: docker.io/redis:7.2.4
+    container_name: langfuse-redis
+    restart: always
+    command: >
+      --requirepass myredissecret
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - default
+
+  postgres:
+    image: docker.io/postgres:16
+    container_name: langfuse-postgres
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - langfuse_postgres_data:/var/lib/postgresql/data
+    networks:
+      - default
+
+volumes:
+  langfuse_postgres_data:
+    driver: local
+
+networks:
+  default:
+    name: langfuse-network
+    driver: bridge
