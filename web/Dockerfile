@@ -16,6 +16,13 @@ FROM --platform=${TARGETPLATFORM:-linux/amd64} base AS pruner
 WORKDIR /app
 
 COPY . .
+# Verify that root package.json with packageManager field exists
+# This ensures the build context is the repository root, not the web/ directory
+RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
+    echo "ERROR: Root package.json with packageManager field not found."; \
+    echo "Please run docker build from the repository root with: docker build -f ./web/Dockerfile -t <tag> ."; \
+    exit 1; \
+    fi
 RUN turbo prune --scope=web --docker
 
 FROM --platform=${TARGETPLATFORM:-linux/amd64} base AS builder
