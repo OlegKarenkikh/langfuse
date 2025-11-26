@@ -17,7 +17,7 @@
 | esbuild | 0.21.5 | 0.25.7 | ✅ Проверено |
 | kysely | 0.27.4 | 0.28.8 | ✅ Проверено |
 | monorepo-symlink-test | 0.0.0 | Удален | ✅ Не найден |
-| golang.org/x/crypto | v0.36.0 | Обновлено | ✅ Через migrate v4.20.0 |
+| golang.org/x/crypto | v0.36.0 | Обновлено | ✅ Через migrate v4.19.0 |
 
 ### ✅ 2. Проверка lock-файла
 
@@ -59,9 +59,9 @@
 ### ✅ 5. Проверка golang-migrate
 
 Обновлено в следующих файлах:
-- ✅ `web/Dockerfile`: v4.19.0 → v4.20.0
-- ✅ `.devcontainer/Dockerfile`: v4.19.0 → v4.20.0
-- ✅ `.github/workflows/pipeline.yml`: v4.19.0 → v4.20.0 (6 мест)
+- ✅ `web/Dockerfile`: фиксирована версия v4.19.0
+- ✅ `.devcontainer/Dockerfile`: фиксирована версия v4.19.0
+- ✅ `.github/workflows/pipeline.yml`: переменная MIGRATE_VERSION=v4.19.0 используется во всех шагах
 
 ### ✅ 6. Форматирование кода
 
