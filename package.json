@@ -93,7 +93,10 @@
       "tar-fs": "^2.1.2",
       "rollup@^4.0.0": "^4.22.4",
       "@types/node-fetch": "^2.6.13",
-      "glob": "^10.5.0"
+      "glob": "^11.1.0",
+      "brace-expansion": "^2.0.2",
+      "tar": "^7.5.2",
+      "esbuild": "^0.25.0"
     },
     "patchedDependencies": {
       "next-auth@4.24.12": "patches/next-auth@4.24.12.patch"
