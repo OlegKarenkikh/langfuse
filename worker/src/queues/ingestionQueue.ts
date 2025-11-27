@@ -59,7 +59,8 @@ export const ingestionQueueProcessorBuilder = (
       if (
         env.LANGFUSE_ENABLE_BLOB_STORAGE_FILE_LOG === "true" &&
         job.data.payload.data.fileKey &&
-        job.data.payload.data.fileKey
+        job.data.payload.data.fileKey &&
+        env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET
       ) {
         const fileName = `${job.data.payload.data.fileKey}.json`;
         clickhouseWriter.addToQueue(TableName.BlobStorageFileLog, {
@@ -69,7 +70,7 @@ export const ingestionQueueProcessorBuilder = (
           entity_id: job.data.payload.data.eventBodyId,
           event_id: job.data.payload.data.fileKey,
           bucket_name: env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET,
-          bucket_path: `${env.LANGFUSE_S3_EVENT_UPLOAD_PREFIX}${job.data.payload.authCheck.scope.projectId}/${getClickhouseEntityType(job.data.payload.data.type)}/${job.data.payload.data.eventBodyId}/${fileName}`,
+          bucket_path: `${env.LANGFUSE_S3_EVENT_UPLOAD_PREFIX ?? ""}${job.data.payload.authCheck.scope.projectId}/${getClickhouseEntityType(job.data.payload.data.type)}/${job.data.payload.data.eventBodyId}/${fileName}`,
           created_at: new Date().getTime(),
           updated_at: new Date().getTime(),
           event_ts: new Date().getTime(),

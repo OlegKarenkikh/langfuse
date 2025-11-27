@@ -833,8 +833,13 @@ export const evaluate = async ({
 
   // Write score to S3 and ingest into queue for Clickhouse processing
   try {
+    if (!env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET) {
+      throw new Error(
+        "S3 event storage is not configured. Please set LANGFUSE_S3_EVENT_UPLOAD_BUCKET environment variable.",
+      );
+    }
     const eventId = randomUUID();
-    const bucketPath = `${env.LANGFUSE_S3_EVENT_UPLOAD_PREFIX}${event.projectId}/score/${scoreId}/${eventId}.json`;
+    const bucketPath = `${env.LANGFUSE_S3_EVENT_UPLOAD_PREFIX ?? ""}${event.projectId}/score/${scoreId}/${eventId}.json`;
     await getS3StorageServiceClient(
       env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET,
     ).uploadJson(bucketPath, [
