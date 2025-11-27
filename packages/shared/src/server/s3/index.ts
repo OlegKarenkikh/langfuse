@@ -28,15 +28,18 @@ export const getS3MediaStorageClient = (bucketName: string): StorageService => {
   return s3MediaStorageClient;
 };
 
-export const getS3EventStorageClient = (bucketName: string): StorageService => {
-  if (!env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET) {
+export const getS3EventStorageClient = (
+  bucketName: string | undefined,
+): StorageService => {
+  const resolvedBucketName = bucketName ?? env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET;
+  if (!resolvedBucketName) {
     throw new Error(
       "S3 event storage is not configured. Please set LANGFUSE_S3_EVENT_UPLOAD_BUCKET environment variable.",
     );
   }
   if (!s3EventStorageClient) {
     s3EventStorageClient = StorageServiceFactory.getInstance({
-      bucketName,
+      bucketName: resolvedBucketName,
       accessKeyId: env.LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID,
       secretAccessKey: env.LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY,
       endpoint: env.LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT,

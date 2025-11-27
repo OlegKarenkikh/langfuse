@@ -84,15 +84,18 @@ export class ClickHouseResourceError extends Error {
 
 let s3StorageServiceClient: StorageService;
 
-const getS3StorageServiceClient = (bucketName: string): StorageService => {
-  if (!env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET) {
+const getS3StorageServiceClient = (
+  bucketName: string | undefined,
+): StorageService => {
+  const resolvedBucketName = bucketName ?? env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET;
+  if (!resolvedBucketName) {
     throw new Error(
       "S3 storage is not configured. Please set LANGFUSE_S3_EVENT_UPLOAD_BUCKET environment variable.",
     );
   }
   if (!s3StorageServiceClient) {
     s3StorageServiceClient = StorageServiceFactory.getInstance({
-      bucketName,
+      bucketName: resolvedBucketName,
       accessKeyId: env.LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID,
       secretAccessKey: env.LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY,
       endpoint: env.LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT,

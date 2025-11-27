@@ -33,10 +33,18 @@ import { isTraceIdInSample } from "./sampling";
 
 let s3StorageServiceClient: StorageService;
 
-const getS3StorageServiceClient = (bucketName: string): StorageService => {
+const getS3StorageServiceClient = (
+  bucketName: string | undefined,
+): StorageService => {
+  const resolvedBucketName = bucketName ?? env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET;
+  if (!resolvedBucketName) {
+    throw new Error(
+      "S3 event storage is not configured. Please set LANGFUSE_S3_EVENT_UPLOAD_BUCKET environment variable.",
+    );
+  }
   if (!s3StorageServiceClient) {
     s3StorageServiceClient = StorageServiceFactory.getInstance({
-      bucketName,
+      bucketName: resolvedBucketName,
       accessKeyId: env.LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID,
       secretAccessKey: env.LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY,
       endpoint: env.LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT,
@@ -224,6 +232,12 @@ export const processEventBatch = async (
     // S3 Event Upload is blocking, but non-failing.
     // If a promise rejects, we log it below, but do not throw an error.
     // In this case, we upload the full batch into the Redis queue.
+    if (!env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET) {
+      logger.warn(
+        "S3 event storage is not configured. Skipping S3 upload. Events will still be processed via Redis queue.",
+      );
+      return;
+    }
     const results = await Promise.allSettled(
       Object.keys(sortedBatchByEventBodyId).map(async (id) => {
         // We upload the event in an array to the S3 bucket grouped by the eventBodyId.
