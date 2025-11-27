@@ -130,6 +130,14 @@ export class OtelIngestionProcessor {
    * into the otel-ingestion-queue.
    */
   async publishToOtelIngestionQueue(resourceSpans: ResourceSpan[]) {
+    if (!env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET) {
+      logger.warn(
+        "S3 event storage is not configured. Cannot publish OTEL spans to ingestion queue.",
+      );
+      throw new Error(
+        "S3 event storage is required for OTEL ingestion. Please set LANGFUSE_S3_EVENT_UPLOAD_BUCKET environment variable.",
+      );
+    }
     const fileKey = `${env.LANGFUSE_S3_EVENT_UPLOAD_PREFIX}otel/${this.projectId}/${this.getCurrentTimePath()}/${randomUUID()}.json`;
 
     // Upload to S3

@@ -7,7 +7,7 @@ import {
 import { BlobStorageFileRefRecordReadType } from "../repositories/definitions";
 import { logger } from "../logger";
 import { env } from "../../env";
-import { clickhouseClient } from "../clickhouse/client";
+import { clickhouseClient, isClickHouseAvailable } from "../clickhouse/client";
 import { getS3EventStorageClient } from "../s3";
 
 export const deleteIngestionEventsFromS3AndClickhouseForScores = async (p: {
@@ -59,6 +59,13 @@ async function removeIngestionEventsFromS3AndDeleteClickhouseRefs(p: {
 }) {
   const { projectId, stream } = p;
 
+  if (!env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET) {
+    logger.warn(
+      "S3 event storage is not configured. Skipping S3 file deletion.",
+    );
+    return;
+  }
+
   let batch = 0;
 
   let blobStorageRefs: BlobStorageFileRefRecordReadType[] = [];
@@ -95,6 +102,12 @@ async function removeIngestionEventsFromS3AndDeleteClickhouseRefs(p: {
 async function softDeleteInClickhouse(
   blobStorageRefs: BlobStorageFileRefRecordReadType[],
 ) {
+  if (!isClickHouseAvailable()) {
+    logger.warn(
+      "ClickHouse is not configured. Skipping soft delete in ClickHouse.",
+    );
+    return;
+  }
   await clickhouseClient().insert({
     table: "blob_storage_file_log",
     values: blobStorageRefs.map((e) => ({
