@@ -3,6 +3,7 @@ import {
   clickhouseClient,
   convertDateToClickhouseDateTime,
   PreferredClickhouseService,
+  isClickHouseAvailable,
 } from "../clickhouse/client";
 import { logger } from "../logger";
 import { getTracer, instrumentAsync } from "../instrumentation";
@@ -84,6 +85,11 @@ export class ClickHouseResourceError extends Error {
 let s3StorageServiceClient: StorageService;
 
 const getS3StorageServiceClient = (bucketName: string): StorageService => {
+  if (!env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET) {
+    throw new Error(
+      "S3 storage is not configured. Please set LANGFUSE_S3_EVENT_UPLOAD_BUCKET environment variable.",
+    );
+  }
   if (!s3StorageServiceClient) {
     s3StorageServiceClient = StorageServiceFactory.getInstance({
       bucketName,
@@ -107,6 +113,12 @@ export async function upsertClickhouse<
   eventBodyMapper: (body: T) => Record<string, unknown>; // eslint-disable-line no-unused-vars
   tags?: Record<string, string>;
 }): Promise<void> {
+  if (!isClickHouseAvailable()) {
+    logger.warn(
+      "ClickHouse is not configured. Skipping upsertClickhouse operation.",
+    );
+    return;
+  }
   return await instrumentAsync(
     { name: "clickhouse-upsert", spanKind: SpanKind.CLIENT },
     async (span) => {
@@ -128,7 +140,10 @@ export async function upsertClickhouse<
           const eventId = randomUUID();
           const bucketPath = `${env.LANGFUSE_S3_EVENT_UPLOAD_PREFIX}${record.project_id}/${getClickhouseEntityType(eventType)}/${record.id}/${eventId}.json`;
 
-          if (env.LANGFUSE_ENABLE_BLOB_STORAGE_FILE_LOG === "true") {
+          if (
+            env.LANGFUSE_ENABLE_BLOB_STORAGE_FILE_LOG === "true" &&
+            env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET
+          ) {
             // Write new file directly to ClickHouse. We don't use the ClickHouse writer here as we expect more limited traffic
             // and are not worried that much about latency.
             await clickhouseClient().insert({
@@ -153,16 +168,19 @@ export async function upsertClickhouse<
             });
           }
 
-          return getS3StorageServiceClient(
-            env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET,
-          ).uploadJson(bucketPath, [
-            {
-              id: eventId,
-              timestamp: new Date().toISOString(),
-              type: eventType,
-              body: opts.eventBodyMapper(record),
-            },
-          ]);
+          // Only upload to S3 if bucket is configured
+          if (env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET) {
+            return getS3StorageServiceClient(
+              env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET,
+            ).uploadJson(bucketPath, [
+              {
+                id: eventId,
+                timestamp: new Date().toISOString(),
+                type: eventType,
+                body: opts.eventBodyMapper(record),
+              },
+            ]);
+          }
         }),
       );
 
@@ -213,6 +231,12 @@ export async function* queryClickhouseStream<T>(opts: {
   preferredClickhouseService?: PreferredClickhouseService;
   clickhouseSettings?: ClickHouseSettings;
 }): AsyncGenerator<T> {
+  if (!isClickHouseAvailable()) {
+    logger.warn(
+      "ClickHouse is not configured. Cannot execute queryClickhouseStream.",
+    );
+    return;
+  }
   const tracer = getTracer("clickhouse-query-stream");
   const span = tracer.startSpan("clickhouse-query-stream", {
     kind: SpanKind.CLIENT,
@@ -337,6 +361,12 @@ export async function queryClickhouse<T>(opts: {
   preferredClickhouseService?: PreferredClickhouseService;
   clickhouseSettings?: ClickHouseSettings;
 }): Promise<T[]> {
+  if (!isClickHouseAvailable()) {
+    logger.warn(
+      "ClickHouse is not configured. Cannot execute queryClickhouse. Returning empty array.",
+    );
+    return [];
+  }
   return await instrumentAsync(
     { name: "clickhouse-query", spanKind: SpanKind.CLIENT },
     async (span) => {
@@ -437,6 +467,12 @@ export async function commandClickhouse(opts: {
   tags?: Record<string, string>;
   clickhouseSettings?: ClickHouseSettings;
 }): Promise<void> {
+  if (!isClickHouseAvailable()) {
+    logger.warn(
+      "ClickHouse is not configured. Cannot execute commandClickhouse. Skipping.",
+    );
+    return;
+  }
   return await instrumentAsync(
     { name: "clickhouse-command", spanKind: SpanKind.CLIENT },
     async (span) => {

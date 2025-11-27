@@ -200,11 +200,11 @@ export const env = createEnv({
     OTEL_TRACE_SAMPLING_RATIO: z.coerce.number().gt(0).lte(1).default(1),
 
     // clickhouse
-    CLICKHOUSE_URL: z.string().url(),
+    CLICKHOUSE_URL: z.string().url().optional(),
     CLICKHOUSE_CLUSTER_NAME: z.string().default("default"),
     CLICKHOUSE_DB: z.string().default("default"),
-    CLICKHOUSE_USER: z.string(),
-    CLICKHOUSE_PASSWORD: z.string(),
+    CLICKHOUSE_USER: z.string().optional(),
+    CLICKHOUSE_PASSWORD: z.string().optional(),
     CLICKHOUSE_CLUSTER_ENABLED: z.enum(["true", "false"]).default("true"),
 
     // EE ui customization

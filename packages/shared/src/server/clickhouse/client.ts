@@ -72,14 +72,31 @@ export class ClickHouseClientManager {
   };
 
   /**
+   * Check if ClickHouse is configured and available
+   */
+  public isClickHouseAvailable(): boolean {
+    return !!(
+      env.CLICKHOUSE_URL &&
+      env.CLICKHOUSE_USER &&
+      env.CLICKHOUSE_PASSWORD
+    );
+  }
+
+  /**
    * Get or create a client based on the provided parameters
    * @param opts Client configuration parameters
    * @returns ClickHouse client instance
+   * @throws Error if ClickHouse is not configured
    */
   public getClient(
     opts: NodeClickHouseClientConfigOptions,
     preferredClickhouseService: PreferredClickhouseService = "ReadWrite",
   ): ClickhouseClientType {
+    if (!this.isClickHouseAvailable()) {
+      throw new Error(
+        "ClickHouse is not configured. Please set CLICKHOUSE_URL, CLICKHOUSE_USER, and CLICKHOUSE_PASSWORD environment variables.",
+      );
+    }
     const settings = this.generateClientSettings(
       opts,
       preferredClickhouseService,
@@ -165,6 +182,13 @@ export const clickhouseClient = (
     opts ?? {},
     preferredClickhouseService,
   );
+};
+
+/**
+ * Check if ClickHouse is configured and available
+ */
+export const isClickHouseAvailable = (): boolean => {
+  return ClickHouseClientManager.getInstance().isClickHouseAvailable();
 };
 
 /**

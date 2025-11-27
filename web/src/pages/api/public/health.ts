@@ -8,6 +8,7 @@ import {
   measureAndReturn,
   queryClickhouse,
   traceException,
+  isClickHouseAvailable,
 } from "@langfuse/shared/src/server";
 import { type NextApiRequest, type NextApiResponse } from "next";
 
@@ -37,6 +38,12 @@ export default async function handler(
 
     try {
       if (failIfNoRecentEvents) {
+        if (!isClickHouseAvailable()) {
+          return res.status(503).json({
+            status: "ClickHouse is not configured",
+            version: VERSION.replace("v", ""),
+          });
+        }
         const now = new Date();
         const traces = await measureAndReturn({
           operationName: "healthCheckTraces",

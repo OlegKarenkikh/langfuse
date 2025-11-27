@@ -8,6 +8,11 @@ let s3MediaStorageClient: StorageService;
 let s3EventStorageClient: StorageService;
 
 export const getS3MediaStorageClient = (bucketName: string): StorageService => {
+  if (!env.LANGFUSE_S3_MEDIA_UPLOAD_BUCKET) {
+    throw new Error(
+      "S3 media storage is not configured. Please set LANGFUSE_S3_MEDIA_UPLOAD_BUCKET environment variable.",
+    );
+  }
   if (!s3MediaStorageClient) {
     s3MediaStorageClient = StorageServiceFactory.getInstance({
       bucketName,
@@ -24,6 +29,11 @@ export const getS3MediaStorageClient = (bucketName: string): StorageService => {
 };
 
 export const getS3EventStorageClient = (bucketName: string): StorageService => {
+  if (!env.LANGFUSE_S3_EVENT_UPLOAD_BUCKET) {
+    throw new Error(
+      "S3 event storage is not configured. Please set LANGFUSE_S3_EVENT_UPLOAD_BUCKET environment variable.",
+    );
+  }
   if (!s3EventStorageClient) {
     s3EventStorageClient = StorageServiceFactory.getInstance({
       bucketName,
