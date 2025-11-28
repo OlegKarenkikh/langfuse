@@ -80,7 +80,7 @@ Langfuse is an **open source LLM engineering** platform. It helps teams collabor
 
 <img width="4856" height="1944" alt="Langfuse Overview" src="https://github.com/user-attachments/assets/5dac68ef-d546-49fb-b06f-cfafc19282e3" />
 
-- SPECIAL RELEASE witout critical and meduim CVE, minimal config web+worker+redis+postgres
+- SPECIAL RELEASE without critical and meduim CVE, minimal config web+worker+redis+postgres
   
 - [LLM Application Observability](https://langfuse.com/docs/tracing): Instrument your app and start ingesting traces to Langfuse, thereby tracking LLM calls and other relevant logic in your app such as retrieval, embedding, or agent actions. Inspect and debug complex logs and user sessions. Try the interactive [demo](https://langfuse.com/docs/demo) to see this in action.
 
