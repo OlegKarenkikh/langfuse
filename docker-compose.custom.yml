@@ -3,7 +3,9 @@ services:
     build:
       context: .
       dockerfile: worker/Dockerfile
-    image: olegkarenkikh/langfuse-worker:latest
+      args:
+        - NEXT_PUBLIC_BUILD_ID=${NEXT_PUBLIC_BUILD_ID:-local}
+    image: olegkarenkikh/langfuse_langfuse-worker:4
     restart: always
     depends_on:
       postgres:
@@ -22,7 +24,9 @@ services:
     build:
       context: .
       dockerfile: web/Dockerfile
-    image: olegkarenkikh/langfuse:latest
+      args:
+        - NEXT_PUBLIC_BUILD_ID=${NEXT_PUBLIC_BUILD_ID:-local}
+    image: olegkarenkikh/langfuse_langfuse-web:4
     restart: always
     depends_on:
       postgres:
@@ -52,7 +56,7 @@ services:
       retries: 10
 
   postgres:
-    image: docker.io/postgres:15
+    image: docker.io/postgres:13
     restart: always
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
