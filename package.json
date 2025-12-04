@@ -106,7 +106,10 @@
       "body-parser": "^2.2.1",
       "@babel/helpers": "^7.26.10",
       "babel-helpers": "^7.26.10",
-      "vite": "^7.0.8"
+      "vite": "^7.0.8",
+      "nodemailer": "^7.0.11",
+      "mdast-util-to-hast": "^13.2.1",
+      "next": "15.5.7"
     },
     "patchedDependencies": {
       "next-auth@4.24.12": "patches/next-auth@4.24.12.patch"
