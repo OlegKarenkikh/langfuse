@@ -1,20 +1,10 @@
-FROM --platform=${TARGETPLATFORM:-linux/amd64} node:24-alpine AS alpine
-
-# It's important to update the index before installing packages to ensure you're getting the latest versions.
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk update && apk upgrade --no-cache libcrypto3 libssl3 libc6-compat busybox ssl_client
-
-FROM --platform=${TARGETPLATFORM:-linux/amd64} alpine AS base
+FROM almalinux:8-minimal AS pruner
+RUN microdnf install -y curl ca-certificates tar gzip \
+    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+    && microdnf install -y nodejs \
+    && microdnf clean all
 RUN npm install turbo@^2.6.1 --global
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
-RUN corepack prepare pnpm@9.5.0 --activate
-
-FROM --platform=${TARGETPLATFORM:-linux/amd64} base AS pruner
-
 WORKDIR /app
-
 COPY . .
 # Verify that root package.json with packageManager field exists
 # This ensures the build context is the repository root, not the web/ directory
@@ -25,7 +15,12 @@ RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json;
     fi
 RUN turbo prune --scope=web --docker
 
-FROM --platform=${TARGETPLATFORM:-linux/amd64} base AS builder
+FROM almalinux:8-minimal AS builder
+RUN microdnf install -y curl ca-certificates tar gzip git \
+    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+    && microdnf install -y nodejs \
+    && microdnf clean all
+RUN npm install -g pnpm@9.15.0
 
 WORKDIR /app
 
@@ -90,10 +85,10 @@ ENV NEXT_MANUAL_SIG_HANDLE true
 # set the CI flag to true to get CI specific logs
 ENV CI true
 
-RUN NODE_OPTIONS='--max-old-space-size-percentage=75' turbo run build --filter=web...
+RUN NODE_OPTIONS='--max-old-space-size-percentage=75' pnpm turbo run build --filter=web...
 
 # Production image, copy all the files and run next
-FROM --platform=${TARGETPLATFORM:-linux/amd64} base AS runner
+FROM almalinux:8-minimal AS runner
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -113,13 +108,29 @@ ENV DOCKER_BUILD 0
 # Set NEXT_MANUAL_SIG_HANDLE for runtime
 ENV NEXT_MANUAL_SIG_HANDLE true
 
-RUN apk add --no-cache dumb-init tzdata
+RUN microdnf install -y curl ca-certificates tar gzip shadow-utils \
+    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+    && microdnf install -y nodejs \
+    && microdnf clean all
+
+# Install dumb-init
+ARG TARGETPLATFORM
+RUN DUMB_INIT_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/linux\///') && \
+    if [ "$DUMB_INIT_ARCH" = "amd64" ]; then \
+      DUMB_INIT_URL="https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_x86_64"; \
+    elif [ "$DUMB_INIT_ARCH" = "arm64" ]; then \
+      DUMB_INIT_URL="https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_aarch64"; \
+    else \
+      echo "Unsupported architecture: $DUMB_INIT_ARCH"; exit 1; \
+    fi && \
+    curl -L -o /usr/local/bin/dumb-init "$DUMB_INIT_URL" && \
+    chmod +x /usr/local/bin/dumb-init
 
 # Don't run production as root
 ARG UID=1001
 ARG GID=1001
-RUN addgroup --system --gid ${GID} nodejs
-RUN adduser --system --uid ${UID} nextjs
+RUN groupadd --system --gid ${GID} nodejs
+RUN useradd --system --uid ${UID} --gid nodejs nextjs
 
 RUN npm install -g --no-package-lock --no-save prisma@6.17.1
 
@@ -130,7 +141,7 @@ RUN if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
     fi
 
 RUN MIGRATE_TARGET_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/\//-/g') && \
-    wget -q -O- https://github.com/golang-migrate/migrate/releases/download/v4.19.0/migrate.$MIGRATE_TARGET_ARCH.tar.gz | tar xvz && \
+    curl -L https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.$MIGRATE_TARGET_ARCH.tar.gz | tar xvz && \
     mv migrate /usr/bin/migrate
 
 COPY --from=builder --chown=nextjs:nodejs /app/web/next.config.mjs .
@@ -156,7 +167,7 @@ ENV PORT 3000
 
 # Docker ENTRYPOINT (dumb-init) is covered by semantic versioning, not the entrypoint.sh itself
 # Reasoning: ENTRYPOINT is overridden by some self-hosted deployments, thus changing this is breaking
-ENTRYPOINT ["dumb-init", "--", "./web/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/dumb-init", "--", "./web/entrypoint.sh"]
 
 # startup command - use dd-trace if NEXT_PUBLIC_LANGFUSE_CLOUD_REGION is configured
 CMD if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
