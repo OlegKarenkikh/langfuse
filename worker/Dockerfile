@@ -1,5 +1,5 @@
-FROM almalinux:8-minimal AS pruner
-RUN microdnf install -y curl ca-certificates tar gzip \
+FROM almalinux:9-minimal AS pruner
+RUN microdnf install -y ca-certificates tar gzip \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && microdnf install -y nodejs \
     && microdnf clean all
@@ -8,8 +8,8 @@ WORKDIR /app
 COPY . .
 RUN turbo prune --scope=worker --docker
 
-FROM almalinux:8-minimal AS builder
-RUN microdnf install -y curl ca-certificates tar gzip git \
+FROM almalinux:9-minimal AS builder
+RUN microdnf install -y ca-certificates tar gzip git \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && microdnf install -y nodejs \
     && microdnf clean all
@@ -36,12 +36,13 @@ COPY --from=pruner /app/out/full/ .
 
 RUN pnpm turbo run build --filter=worker...
 
-FROM almalinux:8-minimal AS runner
+FROM almalinux:9-minimal AS runner
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 
-RUN microdnf install -y curl ca-certificates tar gzip shadow-utils \
+RUN microdnf update -y \
+    && microdnf install -y ca-certificates tar gzip shadow-utils \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && microdnf install -y nodejs \
     && microdnf clean all
