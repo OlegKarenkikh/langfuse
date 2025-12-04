@@ -6,10 +6,10 @@ RUN microdnf install -y curl ca-certificates tar gzip \
 RUN npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
-# Verify that root package.json with packageManager field exists
+# Verify that pnpm-workspace.yaml exists
 # This ensures the build context is the repository root, not the web/ directory
-RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
-    echo "ERROR: Root package.json with packageManager field not found."; \
+RUN if [ ! -f "./pnpm-workspace.yaml" ]; then \
+    echo "ERROR: pnpm-workspace.yaml not found."; \
     echo "Please run docker build from the repository root with: docker build -f ./web/Dockerfile -t <tag> ."; \
     exit 1; \
     fi
