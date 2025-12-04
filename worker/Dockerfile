@@ -36,6 +36,8 @@ COPY --from=pruner /app/out/full/ .
 
 RUN pnpm turbo run build --filter=worker...
 
+RUN pnpm prune --prod
+
 FROM almalinux:9-minimal AS runner
 
 ARG TARGETPLATFORM
