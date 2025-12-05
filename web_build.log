@@ -1,43 +1,71 @@
 #0 building with "default" instance using docker driver
 
 #1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 7.46kB done
+#1 transferring dockerfile: 7.26kB 0.0s done
 #1 DONE 0.0s
 
-#2 [auth] library/almalinux:pull token for registry-1.docker.io
+#2 [internal] load metadata for docker.io/library/golang:1.24-alpine
 #2 DONE 0.0s
 
-#3 [internal] load metadata for docker.io/library/golang:1.24-alpine
-#3 ...
+#3 [auth] library/almalinux:pull token for registry-1.docker.io
+#3 DONE 0.0s
 
-#4 [auth] library/golang:pull token for registry-1.docker.io
-#4 DONE 0.0s
+#4 [internal] load metadata for docker.io/library/almalinux:8-minimal
+#4 DONE 0.5s
 
-#5 [internal] load metadata for docker.io/library/almalinux:8-minimal
-#5 DONE 0.7s
+#5 [internal] load .dockerignore
+#5 transferring context: 131B done
+#5 DONE 0.0s
 
-#3 [internal] load metadata for docker.io/library/golang:1.24-alpine
-#3 DONE 0.8s
-
-#6 [internal] load .dockerignore
-#6 transferring context: 131B done
+#6 [go-builder 1/7] FROM docker.io/library/golang:1.24-alpine
 #6 DONE 0.0s
 
-#7 [pruner 1/7] FROM docker.io/library/almalinux:8-minimal@sha256:81465a1679cab5769cd828c0e45b946b3e7d2b590dee0349724ad914c92bc31a
-#7 resolve docker.io/library/almalinux:8-minimal@sha256:81465a1679cab5769cd828c0e45b946b3e7d2b590dee0349724ad914c92bc31a 0.0s done
-#7 sha256:ecf5caf65ebb19422f7a35ab5d6c98f7f009ff20d9c41d4aa3bfb58b2e132c80 609B / 609B done
-#7 sha256:266a2f508138a8662ed9519ab5ddc36b66ebb97a62e4c5b38db0ae5965593487 0B / 37.57MB 0.1s
-#7 sha256:81465a1679cab5769cd828c0e45b946b3e7d2b590dee0349724ad914c92bc31a 4.71kB / 4.71kB done
-#7 sha256:ca48da4d4999c0c4da8dfb0ea54b7a4aeff79b89561b293e3f90e3489abf7d53 1.04kB / 1.04kB done
-#7 sha256:266a2f508138a8662ed9519ab5ddc36b66ebb97a62e4c5b38db0ae5965593487 3.15MB / 37.57MB 0.3s
-#7 sha256:266a2f508138a8662ed9519ab5ddc36b66ebb97a62e4c5b38db0ae5965593487 13.63MB / 37.57MB 0.4s
-#7 sha256:266a2f508138a8662ed9519ab5ddc36b66ebb97a62e4c5b38db0ae5965593487 22.02MB / 37.57MB 0.5s
-#7 ...
+#7 [internal] load build context
+#7 DONE 0.0s
 
-#8 [internal] load build context
-#8 transferring context: 16.39MB 0.6s done
-#8 DONE 0.6s
+#8 [pruner 1/7] FROM docker.io/library/almalinux:8-minimal@sha256:81465a1679cab5769cd828c0e45b946b3e7d2b590dee0349724ad914c92bc31a
+#8 DONE 0.0s
 
-#7 [pruner 1/7] FROM docker.io/library/almalinux:8-minimal@sha256:81465a1679cab5769cd828c0e45b946b3e7d2b590dee0349724ad914c92bc31a
-#7 sha256:266a2f508138a8662ed9519ab5ddc36b66ebb97a62e4c5b38db0ae5965593487 33.29MB / 37.57MB 0.7s
-#7 sha256:266a2f508138a8662ed9519ab5ddc36b66ebb97a62e4c5b38db0ae5965593487 37.57MB / 37.57MB 0.8s
+#9 [runner  4/19] RUN DUMB_INIT_ARCH=$(echo linux/amd64 | sed 's/linux\///') &&     if [ "$DUMB_INIT_ARCH" = "amd64" ]; then       DUMB_INIT_URL="https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_x86_64";     elif [ "$DUMB_INIT_ARCH" = "arm64" ]; then       DUMB_INIT_URL="https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_aarch64";     else       echo "Unsupported architecture: $DUMB_INIT_ARCH"; exit 1;     fi &&     curl -L -o /usr/local/bin/dumb-init "$DUMB_INIT_URL" &&     chmod +x /usr/local/bin/dumb-init
+#9 CACHED
+
+#10 [runner  3/19] RUN microdnf install -y curl ca-certificates tar gzip shadow-utils     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash -     && microdnf install -y nodejs     && microdnf clean all
+#10 CACHED
+
+#11 [runner  7/19] RUN npm install -g --no-package-lock --no-save prisma@6.17.1
+#11 CACHED
+
+#12 [runner  5/19] RUN groupadd --system --gid 1001 nodejs
+#12 CACHED
+
+#13 [runner  2/19] WORKDIR /app
+#13 CACHED
+
+#14 [go-builder 5/7] RUN go get github.com/aws/aws-sdk-go@latest golang.org/x/crypto@latest
+#14 CACHED
+
+#15 [go-builder 7/7] RUN go build -tags 'postgres' -ldflags="-s -w" -o migrate ./cmd/migrate
+#15 CACHED
+
+#16 [go-builder 4/7] RUN git clone -b v4.19.1 --depth 1 https://github.com/golang-migrate/migrate.git .
+#16 CACHED
+
+#17 [go-builder 6/7] RUN go mod tidy
+#17 CACHED
+
+#18 [go-builder 3/7] RUN apk add --no-cache git
+#18 CACHED
+
+#19 [runner  8/19] RUN if [ -n "" ]; then     npm install --no-package-lock --no-save dd-trace@5.65.0;     fi
+#19 CACHED
+
+#20 [go-builder 2/7] WORKDIR /build
+#20 CACHED
+
+#21 [runner  6/19] RUN useradd --system --uid 1001 --gid nodejs nextjs
+#21 CACHED
+
+#22 [runner  9/19] COPY --from=go-builder /build/migrate /usr/bin/migrate
+#22 CACHED
+
+#7 [internal] load build context
