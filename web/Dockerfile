@@ -1,10 +1,14 @@
-FROM node:24-bookworm-slim AS pruner
+FROM almalinux:9-minimal AS pruner
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
 ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl tar gzip \
-    && rm -rf /var/lib/apt/lists/*
+
+RUN microdnf install -y ca-certificates tar gzip grep \
+    && microdnf install -y curl-minimal \
+    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+    && microdnf install -y nodejs \
+    && microdnf clean all
+
 ENV NPM_CONFIG_FETCH_RETRIES=5
 ENV NPM_CONFIG_FETCH_RETRY_FACTOR=2
 ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
@@ -21,13 +25,17 @@ RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json;
     fi
 RUN turbo prune --scope=web --docker
 
-FROM node:24-bookworm-slim AS builder
+FROM almalinux:9-minimal AS builder
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
 ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl tar gzip git \
-    && rm -rf /var/lib/apt/lists/*
+
+RUN microdnf install -y ca-certificates tar gzip git \
+    && microdnf install -y curl-minimal \
+    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+    && microdnf install -y nodejs \
+    && microdnf clean all
+
 ENV NPM_CONFIG_FETCH_RETRIES=5
 ENV NPM_CONFIG_FETCH_RETRY_FACTOR=2
 ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
@@ -107,7 +115,7 @@ RUN ulimit -n 65536 \
     && NODE_OPTIONS='--max-old-space-size-percentage=75' pnpm turbo run build --filter=web...
 
 # Production image, copy all the files and run next
-FROM node:24-bookworm-slim AS runner
+FROM almalinux:9-minimal AS runner
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
 ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
@@ -127,9 +135,25 @@ ENV DOCKER_BUILD 0
 # Set NEXT_MANUAL_SIG_HANDLE for runtime
 ENV NEXT_MANUAL_SIG_HANDLE true
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl tar gzip dumb-init \
-    && rm -rf /var/lib/apt/lists/*
+RUN microdnf update -y \
+    && microdnf install -y ca-certificates tar gzip shadow-utils \
+    && microdnf install -y curl-minimal \
+    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+    && microdnf install -y nodejs \
+    && microdnf clean all
+
+# Install dumb-init
+ARG TARGETPLATFORM
+RUN DUMB_INIT_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/linux\///') && \
+    if [ "$DUMB_INIT_ARCH" = "amd64" ]; then \
+      DUMB_INIT_URL="https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_x86_64"; \
+    elif [ "$DUMB_INIT_ARCH" = "arm64" ]; then \
+      DUMB_INIT_URL="https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_aarch64"; \
+    else \
+      echo "Unsupported architecture: $DUMB_INIT_ARCH"; exit 1; \
+    fi && \
+    curl -L -o /usr/local/bin/dumb-init "$DUMB_INIT_URL" && \
+    chmod +x /usr/local/bin/dumb-init
 
 # Don't run production as root
 ARG UID=1001
