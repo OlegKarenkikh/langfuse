@@ -170,8 +170,9 @@
   "devDependencies": {
     "@jedmao/location": "^3.0.0",
     "@mermaid-js/mermaid-cli": "^11.2.0",
-    "@next/bundle-analyzer": "15.5.4",
-    "@playwright/test": "^1.55.1",
+    "@next/bundle-analyzer": "^15.5.7",
+    "@playwright/test": "^1.57.0",
+    "eslint-config-next": "^15.5.7",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@tailwindcss/forms": "^0.5.7",
