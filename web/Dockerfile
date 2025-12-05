@@ -1,9 +1,15 @@
-FROM almalinux:8-minimal AS pruner
-RUN microdnf install -y curl ca-certificates tar gzip \
-    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
-    && microdnf install -y nodejs \
-    && microdnf clean all
-RUN npm install turbo@^2.6.1 --global
+FROM node:24-bookworm-slim AS pruner
+ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
+ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
+ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl tar gzip \
+    && rm -rf /var/lib/apt/lists/*
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_FACTOR=2
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
+RUN NPM_CONFIG_STRICT_SSL=false npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
 # Verify that root package.json with packageManager field exists
@@ -15,12 +21,24 @@ RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json;
     fi
 RUN turbo prune --scope=web --docker
 
-FROM almalinux:8-minimal AS builder
-RUN microdnf install -y curl ca-certificates tar gzip git \
-    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
-    && microdnf install -y nodejs \
-    && microdnf clean all
-RUN npm install -g pnpm@9.15.0
+FROM node:24-bookworm-slim AS builder
+ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
+ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
+ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl tar gzip git \
+    && rm -rf /var/lib/apt/lists/*
+ENV NPM_CONFIG_FETCH_RETRIES=5
+ENV NPM_CONFIG_FETCH_RETRY_FACTOR=2
+ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
+ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+ENV NPM_CONFIG_STRICT_SSL=false
+ENV PNPM_CONFIG_STRICT_SSL=false
+RUN NPM_CONFIG_STRICT_SSL=false npm install -g pnpm@9.15.0
+
+# Limit parallelism to avoid exceeding default file descriptor limits during build
+ENV NEXT_PRIVATE_WORKER_THREAD_COUNT=4
 
 WORKDIR /app
 
@@ -29,7 +47,7 @@ COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
-RUN pnpm install --frozen-lockfile
+RUN NPM_CONFIG_STRICT_SSL=false PNPM_CONFIG_STRICT_SSL=false NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm install --frozen-lockfile
 
 ENV DOCKER_BUILD 1
 ENV NEXT_MANUAL_SIG_HANDLE true
@@ -85,13 +103,14 @@ ENV NEXT_MANUAL_SIG_HANDLE true
 # set the CI flag to true to get CI specific logs
 ENV CI true
 
-RUN NODE_OPTIONS='--max-old-space-size-percentage=75' pnpm turbo run build --filter=web...
+RUN ulimit -n 65536 \
+    && NODE_OPTIONS='--max-old-space-size-percentage=75' pnpm turbo run build --filter=web...
 
 # Production image, copy all the files and run next
-FROM almalinux:8-minimal AS runner
-
-ARG TARGETPLATFORM
-ARG BUILDPLATFORM
+FROM node:24-bookworm-slim AS runner
+ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
+ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
+ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
 
 WORKDIR /app
 
@@ -108,23 +127,9 @@ ENV DOCKER_BUILD 0
 # Set NEXT_MANUAL_SIG_HANDLE for runtime
 ENV NEXT_MANUAL_SIG_HANDLE true
 
-RUN microdnf install -y curl ca-certificates tar gzip shadow-utils \
-    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
-    && microdnf install -y nodejs \
-    && microdnf clean all
-
-# Install dumb-init
-ARG TARGETPLATFORM
-RUN DUMB_INIT_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/linux\///') && \
-    if [ "$DUMB_INIT_ARCH" = "amd64" ]; then \
-      DUMB_INIT_URL="https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_x86_64"; \
-    elif [ "$DUMB_INIT_ARCH" = "arm64" ]; then \
-      DUMB_INIT_URL="https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_aarch64"; \
-    else \
-      echo "Unsupported architecture: $DUMB_INIT_ARCH"; exit 1; \
-    fi && \
-    curl -L -o /usr/local/bin/dumb-init "$DUMB_INIT_URL" && \
-    chmod +x /usr/local/bin/dumb-init
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl tar gzip dumb-init \
+    && rm -rf /var/lib/apt/lists/*
 
 # Don't run production as root
 ARG UID=1001
@@ -132,16 +137,18 @@ ARG GID=1001
 RUN groupadd --system --gid ${GID} nodejs
 RUN useradd --system --uid ${UID} --gid nodejs nextjs
 
-RUN npm install -g --no-package-lock --no-save prisma@6.17.1
+RUN NPM_CONFIG_STRICT_SSL=false npm install -g --no-package-lock --no-save prisma@6.17.1
 
 # Install dd-trace only if NEXT_PUBLIC_LANGFUSE_CLOUD_REGION is configured
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 RUN if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
-    npm install --no-package-lock --no-save dd-trace@5.65.0; \
+    NPM_CONFIG_STRICT_SSL=false npm install --no-package-lock --no-save dd-trace@5.65.0; \
     fi
 
 RUN MIGRATE_TARGET_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/\//-/g') && \
-    curl -L https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.$MIGRATE_TARGET_ARCH.tar.gz | tar xvz && \
+    curl -fL --retry 5 --retry-delay 5 --retry-all-errors --insecure \
+      https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.$MIGRATE_TARGET_ARCH.tar.gz \
+      | tar xvz && \
     mv migrate /usr/bin/migrate
 
 COPY --from=builder --chown=nextjs:nodejs /app/web/next.config.mjs .
