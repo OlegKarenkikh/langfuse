@@ -1,0 +1,43 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 7.46kB done
+#1 DONE 0.0s
+
+#2 [auth] library/almalinux:pull token for registry-1.docker.io
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.24-alpine
+#3 ...
+
+#4 [auth] library/golang:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/almalinux:8-minimal
+#5 DONE 0.7s
+
+#3 [internal] load metadata for docker.io/library/golang:1.24-alpine
+#3 DONE 0.8s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 131B done
+#6 DONE 0.0s
+
+#7 [pruner 1/7] FROM docker.io/library/almalinux:8-minimal@sha256:81465a1679cab5769cd828c0e45b946b3e7d2b590dee0349724ad914c92bc31a
+#7 resolve docker.io/library/almalinux:8-minimal@sha256:81465a1679cab5769cd828c0e45b946b3e7d2b590dee0349724ad914c92bc31a 0.0s done
+#7 sha256:ecf5caf65ebb19422f7a35ab5d6c98f7f009ff20d9c41d4aa3bfb58b2e132c80 609B / 609B done
+#7 sha256:266a2f508138a8662ed9519ab5ddc36b66ebb97a62e4c5b38db0ae5965593487 0B / 37.57MB 0.1s
+#7 sha256:81465a1679cab5769cd828c0e45b946b3e7d2b590dee0349724ad914c92bc31a 4.71kB / 4.71kB done
+#7 sha256:ca48da4d4999c0c4da8dfb0ea54b7a4aeff79b89561b293e3f90e3489abf7d53 1.04kB / 1.04kB done
+#7 sha256:266a2f508138a8662ed9519ab5ddc36b66ebb97a62e4c5b38db0ae5965593487 3.15MB / 37.57MB 0.3s
+#7 sha256:266a2f508138a8662ed9519ab5ddc36b66ebb97a62e4c5b38db0ae5965593487 13.63MB / 37.57MB 0.4s
+#7 sha256:266a2f508138a8662ed9519ab5ddc36b66ebb97a62e4c5b38db0ae5965593487 22.02MB / 37.57MB 0.5s
+#7 ...
+
+#8 [internal] load build context
+#8 transferring context: 16.39MB 0.6s done
+#8 DONE 0.6s
+
+#7 [pruner 1/7] FROM docker.io/library/almalinux:8-minimal@sha256:81465a1679cab5769cd828c0e45b946b3e7d2b590dee0349724ad914c92bc31a
+#7 sha256:266a2f508138a8662ed9519ab5ddc36b66ebb97a62e4c5b38db0ae5965593487 33.29MB / 37.57MB 0.7s
+#7 sha256:266a2f508138a8662ed9519ab5ddc36b66ebb97a62e4c5b38db0ae5965593487 37.57MB / 37.57MB 0.8s

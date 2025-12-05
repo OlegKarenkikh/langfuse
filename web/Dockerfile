@@ -15,6 +15,17 @@ RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json;
     fi
 RUN turbo prune --scope=web --docker
 
+FROM golang:1.24-alpine AS go-builder
+WORKDIR /go/src/github.com/golang-migrate/migrate
+ARG MIGRATE_VERSION=v4.19.1
+RUN apk add --no-cache git
+RUN git clone --branch $MIGRATE_VERSION --depth 1 https://github.com/golang-migrate/migrate .
+# Update dependencies to fix vulnerabilities
+RUN go get github.com/aws/aws-sdk-go@latest && \
+    go get golang.org/x/crypto@latest && \
+    go mod tidy
+RUN go build -tags 'postgres' -ldflags="-X main.Version=${MIGRATE_VERSION}" -o migrate ./cmd/migrate
+
 FROM almalinux:8-minimal AS builder
 RUN microdnf install -y curl ca-certificates tar gzip git \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
@@ -140,9 +151,7 @@ RUN if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
     npm install --no-package-lock --no-save dd-trace@5.65.0; \
     fi
 
-RUN MIGRATE_TARGET_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/\//-/g') && \
-    curl -L https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.$MIGRATE_TARGET_ARCH.tar.gz | tar xvz && \
-    mv migrate /usr/bin/migrate
+COPY --from=go-builder /go/src/github.com/golang-migrate/migrate/migrate /usr/bin/migrate
 
 COPY --from=builder --chown=nextjs:nodejs /app/web/next.config.mjs .
 COPY --from=builder --chown=nextjs:nodejs /app/web/package.json .
