@@ -1,18 +1,12 @@
-FROM almalinux:9-minimal AS pruner
-RUN microdnf install -y ca-certificates tar gzip \
-    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
-    && microdnf install -y nodejs \
-    && microdnf clean all
+FROM node:24-alpine AS pruner
+RUN apk update && apk add --no-cache libc6-compat tar gzip
 RUN npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
 RUN turbo prune --scope=worker --docker
 
-FROM almalinux:9-minimal AS builder
-RUN microdnf install -y ca-certificates tar gzip git \
-    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
-    && microdnf install -y nodejs \
-    && microdnf clean all
+FROM node:24-alpine AS builder
+RUN apk update && apk add --no-cache libc6-compat git tar gzip
 RUN npm install -g pnpm@9.15.0
 
 WORKDIR /app
@@ -38,29 +32,12 @@ RUN pnpm turbo run build --filter=worker...
 
 RUN pnpm prune --prod
 
-FROM almalinux:9-minimal AS runner
+FROM node:24-alpine AS runner
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 
-RUN microdnf update -y \
-    && microdnf install -y ca-certificates tar gzip shadow-utils \
-    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
-    && microdnf install -y nodejs \
-    && microdnf clean all
-
-# Install dumb-init
-ARG TARGETPLATFORM
-RUN DUMB_INIT_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/linux\///') && \
-    if [ "$DUMB_INIT_ARCH" = "amd64" ]; then \
-      DUMB_INIT_URL="https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_x86_64"; \
-    elif [ "$DUMB_INIT_ARCH" = "arm64" ]; then \
-      DUMB_INIT_URL="https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_aarch64"; \
-    else \
-      echo "Unsupported architecture: $DUMB_INIT_ARCH"; exit 1; \
-    fi && \
-    curl -L -o /usr/local/bin/dumb-init "$DUMB_INIT_URL" && \
-    chmod +x /usr/local/bin/dumb-init
+RUN apk update && apk add --no-cache libc6-compat shadow curl dumb-init
 
 WORKDIR /app
 
@@ -73,8 +50,8 @@ ENV DOCKER_BUILD 0
 # Don't run production as root
 ARG UID=1001
 ARG GID=1001
-RUN groupadd --system --gid ${GID} expressjs
-RUN useradd --system --uid ${UID} --gid expressjs expressjs
+RUN addgroup -S -g ${GID} expressjs && \
+    adduser -S -u ${UID} -G expressjs expressjs
 USER expressjs
 
 COPY --from=builder --chown=expressjs:expressjs /app .
@@ -86,7 +63,7 @@ ENV PORT=3030
 
 # Docker ENTRYPOINT (dumb-init) is covered by semantic versioning, not the entrypoint.sh itself
 # Reasoning: ENTRYPOINT is overridden by some self-hosted deployments, thus changing this is breaking
-ENTRYPOINT ["/usr/local/bin/dumb-init", "--", "./worker/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "./worker/entrypoint.sh"]
 
 # startup command
 CMD ["node", "worker/dist/index.js"]

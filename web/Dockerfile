@@ -1,13 +1,9 @@
-FROM almalinux:9-minimal AS pruner
+FROM node:24-alpine AS pruner
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
 ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
 
-RUN microdnf install -y ca-certificates tar gzip grep \
-    && microdnf install -y curl-minimal \
-    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
-    && microdnf install -y nodejs \
-    && microdnf clean all
+RUN apk update && apk add --no-cache libc6-compat tar gzip
 
 ENV NPM_CONFIG_FETCH_RETRIES=5
 ENV NPM_CONFIG_FETCH_RETRY_FACTOR=2
@@ -25,16 +21,12 @@ RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json;
     fi
 RUN turbo prune --scope=web --docker
 
-FROM almalinux:9-minimal AS builder
+FROM node:24-alpine AS builder
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
 ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
 
-RUN microdnf install -y ca-certificates tar gzip git \
-    && microdnf install -y curl-minimal \
-    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
-    && microdnf install -y nodejs \
-    && microdnf clean all
+RUN apk update && apk add --no-cache libc6-compat git tar gzip
 
 ENV NPM_CONFIG_FETCH_RETRIES=5
 ENV NPM_CONFIG_FETCH_RETRY_FACTOR=2
@@ -115,7 +107,7 @@ RUN ulimit -n 65536 \
     && NODE_OPTIONS='--max-old-space-size-percentage=75' pnpm turbo run build --filter=web...
 
 # Production image, copy all the files and run next
-FROM almalinux:9-minimal AS runner
+FROM node:24-alpine AS runner
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
 ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
@@ -135,31 +127,13 @@ ENV DOCKER_BUILD 0
 # Set NEXT_MANUAL_SIG_HANDLE for runtime
 ENV NEXT_MANUAL_SIG_HANDLE true
 
-RUN microdnf update -y \
-    && microdnf install -y ca-certificates tar gzip shadow-utils \
-    && microdnf install -y curl-minimal \
-    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
-    && microdnf install -y nodejs \
-    && microdnf clean all
-
-# Install dumb-init
-ARG TARGETPLATFORM
-RUN DUMB_INIT_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/linux\///') && \
-    if [ "$DUMB_INIT_ARCH" = "amd64" ]; then \
-      DUMB_INIT_URL="https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_x86_64"; \
-    elif [ "$DUMB_INIT_ARCH" = "arm64" ]; then \
-      DUMB_INIT_URL="https://github.com/Yelp/dumb-init/releases/download/v1.2.5/dumb-init_1.2.5_aarch64"; \
-    else \
-      echo "Unsupported architecture: $DUMB_INIT_ARCH"; exit 1; \
-    fi && \
-    curl -L -o /usr/local/bin/dumb-init "$DUMB_INIT_URL" && \
-    chmod +x /usr/local/bin/dumb-init
+RUN apk update && apk add --no-cache libc6-compat shadow curl dumb-init
 
 # Don't run production as root
 ARG UID=1001
 ARG GID=1001
-RUN groupadd --system --gid ${GID} nodejs
-RUN useradd --system --uid ${UID} --gid nodejs nextjs
+RUN addgroup -S -g ${GID} nodejs && \
+    adduser -S -u ${UID} -G nodejs nextjs
 
 RUN NPM_CONFIG_STRICT_SSL=false npm install -g --no-package-lock --no-save prisma@6.17.1
 
@@ -198,7 +172,7 @@ ENV PORT 3000
 
 # Docker ENTRYPOINT (dumb-init) is covered by semantic versioning, not the entrypoint.sh itself
 # Reasoning: ENTRYPOINT is overridden by some self-hosted deployments, thus changing this is breaking
-ENTRYPOINT ["/usr/local/bin/dumb-init", "--", "./web/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--", "./web/entrypoint.sh"]
 
 # startup command - use dd-trace if NEXT_PUBLIC_LANGFUSE_CLOUD_REGION is configured
 CMD if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
