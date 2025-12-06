@@ -1,15 +1,19 @@
-FROM node:24-alpine AS pruner
+FROM almalinux:8 AS pruner
+RUN dnf install -y curl \
+    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+    && dnf install -y nodejs tar gzip \
+    && dnf clean all
+
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
 ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
-
-RUN apk update && apk add --no-cache libc6-compat tar gzip
 
 ENV NPM_CONFIG_FETCH_RETRIES=5
 ENV NPM_CONFIG_FETCH_RETRY_FACTOR=2
 ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
 ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
 RUN NPM_CONFIG_STRICT_SSL=false npm install turbo@^2.6.1 --global
+
 WORKDIR /app
 COPY . .
 # Verify that root package.json with packageManager field exists
@@ -21,12 +25,15 @@ RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json;
     fi
 RUN turbo prune --scope=web --docker
 
-FROM node:24-alpine AS builder
+FROM almalinux:8 AS builder
+RUN dnf install -y curl git tar gzip \
+    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+    && dnf install -y nodejs \
+    && dnf clean all
+
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
 ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
-
-RUN apk update && apk add --no-cache libc6-compat git tar gzip
 
 ENV NPM_CONFIG_FETCH_RETRIES=5
 ENV NPM_CONFIG_FETCH_RETRY_FACTOR=2
@@ -49,8 +56,8 @@ COPY --from=pruner /app/out/json/ .
 
 RUN NPM_CONFIG_STRICT_SSL=false PNPM_CONFIG_STRICT_SSL=false NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm install --frozen-lockfile
 
-ENV DOCKER_BUILD 1
-ENV NEXT_MANUAL_SIG_HANDLE true
+ENV DOCKER_BUILD=1
+ENV NEXT_MANUAL_SIG_HANDLE=true
 
 # pass public variables in build step
 ARG NEXT_PUBLIC_PLAIN_APP_ID
@@ -98,16 +105,16 @@ RUN rm -f ./web/src/middleware.ts
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV NEXT_MANUAL_SIG_HANDLE true
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_MANUAL_SIG_HANDLE=true
 # set the CI flag to true to get CI specific logs
-ENV CI true
+ENV CI=true
 
 RUN ulimit -n 65536 \
     && NODE_OPTIONS='--max-old-space-size-percentage=75' pnpm turbo run build --filter=web...
 
 # Production image, copy all the files and run next
-FROM node:24-alpine AS runner
+FROM almalinux:8 AS runner
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
 ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
@@ -119,21 +126,25 @@ ENV BUILD_ID=$NEXT_PUBLIC_BUILD_ID
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 ENV NEXT_PUBLIC_LANGFUSE_CLOUD_REGION=$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 # Uncomment the following line in case you want to disable telemetry during runtime.
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
 # Needed to re-enable validation of environment variables during runtime
-ENV DOCKER_BUILD 0
+ENV DOCKER_BUILD=0
 # Set NEXT_MANUAL_SIG_HANDLE for runtime
-ENV NEXT_MANUAL_SIG_HANDLE true
+ENV NEXT_MANUAL_SIG_HANDLE=true
 
-RUN apk update && apk add --no-cache libc6-compat shadow curl dumb-init
+RUN dnf install -y epel-release \
+    && dnf install -y curl shadow-utils dumb-init \
+    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+    && dnf install -y nodejs \
+    && dnf clean all
 
 # Don't run production as root
 ARG UID=1001
 ARG GID=1001
-RUN addgroup -S -g ${GID} nodejs && \
-    adduser -S -u ${UID} -G nodejs nextjs
+RUN groupadd -g ${GID} nodejs && \
+    useradd -u ${UID} -g nodejs -m -s /bin/sh nextjs
 
 RUN NPM_CONFIG_STRICT_SSL=false npm install -g --no-package-lock --no-save prisma@6.17.1
 
@@ -144,7 +155,7 @@ RUN if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
     fi
 
 RUN MIGRATE_TARGET_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/\//-/g') && \
-    curl -fL --retry 5 --retry-delay 5 --retry-all-errors --insecure \
+    curl -fL --retry 5 --retry-delay 5 --insecure \
       https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.$MIGRATE_TARGET_ARCH.tar.gz \
       | tar xvz && \
     mv migrate /usr/bin/migrate
@@ -168,15 +179,11 @@ RUN chmod +x ./web/entrypoint.sh
 USER nextjs
 
 # Default port to 3000
-ENV PORT 3000
+ENV PORT=3000
 
 # Docker ENTRYPOINT (dumb-init) is covered by semantic versioning, not the entrypoint.sh itself
 # Reasoning: ENTRYPOINT is overridden by some self-hosted deployments, thus changing this is breaking
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "./web/entrypoint.sh"]
 
 # startup command - use dd-trace if NEXT_PUBLIC_LANGFUSE_CLOUD_REGION is configured
-CMD if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
-    node --import dd-trace/initialize.mjs ./web/server.js --keepAliveTimeout 110000; \
-    else \
-    node ./web/server.js --keepAliveTimeout 110000; \
-    fi
+CMD ["/bin/sh", "-c", "if [ -n \"$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION\" ]; then exec node --import dd-trace/initialize.mjs ./web/server.js --keepAliveTimeout 110000; else exec node ./web/server.js --keepAliveTimeout 110000; fi"]
