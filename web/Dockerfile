@@ -1,5 +1,5 @@
 FROM golang:alpine AS migrate-builder
-RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0
 
 FROM almalinux:8 AS pruner
 RUN dnf install -y curl \
