@@ -2,6 +2,7 @@ FROM almalinux:8 AS pruner
 RUN dnf install -y curl \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs tar gzip \
+    && dnf update -y \
     && dnf clean all
 
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
@@ -29,6 +30,7 @@ FROM almalinux:8 AS builder
 RUN dnf install -y curl git tar gzip \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs \
+    && dnf update -y \
     && dnf clean all
 
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
@@ -138,6 +140,7 @@ RUN dnf install -y epel-release \
     && dnf install -y curl shadow-utils dumb-init \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs \
+    && dnf update -y \
     && dnf clean all
 
 # Don't run production as root
