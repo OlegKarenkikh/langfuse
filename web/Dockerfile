@@ -1,3 +1,6 @@
+FROM golang:alpine AS migrate-builder
+RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
 FROM almalinux:8 AS pruner
 RUN dnf install -y curl \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
@@ -154,11 +157,7 @@ RUN if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
     NPM_CONFIG_STRICT_SSL=false npm install --no-package-lock --no-save dd-trace@5.65.0; \
     fi
 
-RUN MIGRATE_TARGET_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/\//-/g') && \
-    curl -fL --retry 5 --retry-delay 5 --insecure \
-      https://github.com/golang-migrate/migrate/releases/download/v4.19.1/migrate.$MIGRATE_TARGET_ARCH.tar.gz \
-      | tar xvz && \
-    mv migrate /usr/bin/migrate
+COPY --from=migrate-builder /go/bin/migrate /usr/bin/migrate
 
 COPY --from=builder --chown=nextjs:nodejs /app/web/next.config.mjs .
 COPY --from=builder --chown=nextjs:nodejs /app/web/package.json .
