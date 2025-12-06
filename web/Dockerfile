@@ -1,8 +1,9 @@
-FROM golang:alpine AS migrate-builder
-RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+FROM public.ecr.aws/docker/library/golang:alpine AS migrate-builder
+RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0
 
-FROM almalinux:8 AS pruner
-RUN dnf install -y curl \
+FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
+RUN dnf install -y --nogpgcheck almalinux-release \
+    && dnf install -y curl \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs tar gzip \
     && dnf clean all
@@ -28,8 +29,9 @@ RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json;
     fi
 RUN turbo prune --scope=web --docker
 
-FROM almalinux:8 AS builder
-RUN dnf install -y curl git tar gzip \
+FROM public.ecr.aws/almalinux/almalinux:8 AS builder
+RUN dnf install -y --nogpgcheck almalinux-release \
+    && dnf install -y curl git tar gzip \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs \
     && dnf clean all
@@ -117,7 +119,7 @@ RUN ulimit -n 65536 \
     && NODE_OPTIONS='--max-old-space-size-percentage=75' pnpm turbo run build --filter=web...
 
 # Production image, copy all the files and run next
-FROM almalinux:8 AS runner
+FROM public.ecr.aws/almalinux/almalinux:8 AS runner
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
 ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
@@ -137,7 +139,9 @@ ENV DOCKER_BUILD=0
 # Set NEXT_MANUAL_SIG_HANDLE for runtime
 ENV NEXT_MANUAL_SIG_HANDLE=true
 
-RUN dnf install -y epel-release \
+RUN dnf install -y --nogpgcheck almalinux-release \
+    && dnf install -y epel-release \
+    && dnf upgrade -y \
     && dnf install -y curl shadow-utils dumb-init \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs \
