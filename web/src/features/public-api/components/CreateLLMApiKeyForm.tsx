@@ -737,7 +737,7 @@ export function CreateLLMApiKeyForm({
                       <pre className="text-xs">
                         {`{
   "type": "service_account",
-  "project_id": "<project_id>",
+  "project_id": "YOUR_PROJECT_ID",
   "private_key_id": "<private_key_id>",
   "private_key": "<private_key>",
   "client_email": "<client_email>",
