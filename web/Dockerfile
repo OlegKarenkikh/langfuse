@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/golang:1.24-alpine AS migrate-builder
+FROM public.ecr.aws/docker/library/golang:1.24.11-alpine AS migrate-builder
 # Update system packages to latest versions (mitigation for CVE-2025-61725 and others)
 RUN apk update && apk upgrade
 # Verify Go version
