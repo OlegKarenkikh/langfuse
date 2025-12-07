@@ -1,5 +1,5 @@
 FROM public.ecr.aws/docker/library/golang:alpine AS migrate-builder
-RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0
+RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
 RUN dnf install -y --nogpgcheck almalinux-release \
@@ -145,6 +145,8 @@ RUN dnf install -y --nogpgcheck almalinux-release \
     && dnf install -y curl shadow-utils dumb-init \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs \
+    && dnf install -y python3-pip \
+    && pip3 install --upgrade pip setuptools \
     && dnf clean all
 
 # Don't run production as root
