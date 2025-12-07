@@ -1,5 +1,5 @@
-FROM public.ecr.aws/docker/library/golang:alpine AS migrate-builder
-RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0
+FROM public.ecr.aws/docker/library/golang:1.24-alpine AS migrate-builder
+RUN apk update && apk upgrade && go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
 RUN dnf install -y --nogpgcheck almalinux-release \
