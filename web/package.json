@@ -211,6 +211,10 @@
   "ct3aMetadata": {
     "initVersion": "7.13.0"
   },
+  "overrides": {
+    "glob": "^11.1.0",
+    "tar": "^7.5.2"
+  },
   "pnpm": {
     "overrides": {
       "@types/react": "19.2.2",
