@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/golang:alpine AS migrate-builder
+FROM public.ecr.aws/docker/library/golang:1.24-alpine AS migrate-builder
 RUN apk update && apk upgrade
 RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0
 
