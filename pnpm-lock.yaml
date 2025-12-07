@@ -29,6 +29,7 @@ overrides:
   mdast-util-to-hast: ^13.2.1
   jws: ^4.0.1
   solid-js: ^1.9.4
+  axios: ^1.7.9
 
 patchedDependencies:
   next-auth@4.24.12:
@@ -9922,7 +9923,7 @@ packages:
       '@langchain/mistralai': '*'
       '@langchain/ollama': '*'
       '@langchain/xai': '*'
-      axios: '*'
+      axios: ^1.7.9
       cheerio: '*'
       handlebars: ^4.7.8
       peggy: ^3.0.2

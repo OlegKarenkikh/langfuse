@@ -7,6 +7,7 @@ RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
 RUN dnf install -y --nogpgcheck almalinux-release \
+    && dnf upgrade -y \
     && dnf install -y curl \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs tar gzip \
@@ -35,6 +36,7 @@ RUN turbo prune --scope=web --docker
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS builder
 RUN dnf install -y --nogpgcheck almalinux-release \
+    && dnf upgrade -y \
     && dnf install -y curl git tar gzip \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs \
@@ -54,7 +56,7 @@ ENV PNPM_CONFIG_STRICT_SSL=false
 RUN NPM_CONFIG_STRICT_SSL=false npm install -g pnpm@9.15.0
 
 # Limit parallelism to avoid exceeding default file descriptor limits during build
-ENV NEXT_PRIVATE_WORKER_THREAD_COUNT=4
+ENV NEXT_PRIVATE_WORKER_THREAD_COUNT=2
 
 WORKDIR /app
 
@@ -120,7 +122,7 @@ ENV NEXT_MANUAL_SIG_HANDLE=true
 ENV CI=true
 
 RUN ulimit -n 65536 \
-    && NODE_OPTIONS='--max-old-space-size-percentage=75' pnpm turbo run build --filter=web...
+    && NODE_OPTIONS='--max-old-space-size=3072' pnpm turbo run build --filter=web...
 
 # Production image, copy all the files and run next
 FROM public.ecr.aws/almalinux/almalinux:8 AS runner
