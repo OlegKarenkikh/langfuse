@@ -143,10 +143,10 @@ ENV NEXT_MANUAL_SIG_HANDLE=true
 RUN dnf install -y --nogpgcheck almalinux-release \
     && dnf install -y epel-release \
     && dnf upgrade -y \
-    && dnf install -y curl shadow-utils dumb-init python3-pip \
+    && dnf install -y curl shadow-utils dumb-init \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs \
-    && python3 -m pip install --upgrade pip setuptools \
+    && (rpm -e --nodeps $(rpm -qa | grep -E "^(python3-pip|platform-python-pip|python3-setuptools|platform-python-setuptools)") || true) \
     && dnf clean all
 
 # Don't run production as root
