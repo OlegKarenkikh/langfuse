@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/golang:1.24.11-alpine AS migrate-builder
+FROM public.ecr.aws/docker/library/golang:1.24-alpine AS migrate-builder
 # Update system packages to latest versions (mitigation for CVE-2025-61725 and others)
 RUN apk update && apk upgrade
 # Verify Go version
@@ -149,6 +149,7 @@ RUN dnf install -y --nogpgcheck almalinux-release \
     && dnf install -y curl shadow-utils dumb-init \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs \
+    && npm install -g npm@latest \
     && (rpm -e --nodeps $(rpm -qa | grep -E "^(python3-pip|platform-python-pip|python3-setuptools|platform-python-setuptools)") || true) \
     && dnf clean all
 
