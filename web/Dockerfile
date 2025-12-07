@@ -1,4 +1,5 @@
 FROM public.ecr.aws/docker/library/golang:alpine AS migrate-builder
+RUN apk update && apk upgrade
 RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
@@ -142,9 +143,10 @@ ENV NEXT_MANUAL_SIG_HANDLE=true
 RUN dnf install -y --nogpgcheck almalinux-release \
     && dnf install -y epel-release \
     && dnf upgrade -y \
-    && dnf install -y curl shadow-utils dumb-init \
+    && dnf install -y curl shadow-utils dumb-init python3-pip \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs \
+    && python3 -m pip install --upgrade pip setuptools \
     && dnf clean all
 
 # Don't run production as root
