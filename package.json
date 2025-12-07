@@ -90,7 +90,8 @@
     "glob": "^11.1.0",
     "tar": "^7.5.2",
     "jws": "^4.0.1",
-    "solid-js": "^1.9.4"
+    "solid-js": "^1.9.4",
+    "axios": "^1.7.9"
   },
   "pnpm": {
     "overrides": {
@@ -117,7 +118,8 @@
       "next": "^15.5.7",
       "mdast-util-to-hast": "^13.2.1",
       "jws": "^4.0.1",
-      "solid-js": "^1.9.4"
+      "solid-js": "^1.9.4",
+      "axios": "^1.7.9"
     },
     "patchedDependencies": {
       "next-auth@4.24.12": "patches/next-auth@4.24.12.patch"
