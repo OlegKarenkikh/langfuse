@@ -37,7 +37,7 @@ FROM public.ecr.aws/docker/library/node:24-alpine AS runner
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 
-RUN apk update && apk upgrade && apk add --no-cache libc6-compat shadow curl dumb-init
+RUN apk update && apk upgrade && apk add --no-cache libc6-compat shadow curl dumb-init && npm install -g npm@latest
 
 WORKDIR /app
 
