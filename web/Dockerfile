@@ -1,4 +1,5 @@
 FROM public.ecr.aws/docker/library/golang:1.24-alpine AS migrate-builder
+# Update system packages to latest versions (mitigation for CVE-2025-61725 and others)
 RUN apk update && apk upgrade
 RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0
 
@@ -155,12 +156,13 @@ ARG GID=1001
 RUN groupadd -g ${GID} nodejs && \
     useradd -u ${UID} -g nodejs -m -s /bin/sh nextjs
 
-RUN NPM_CONFIG_STRICT_SSL=false npm install -g --no-package-lock --no-save prisma@6.17.1
+# Explicitly install secure versions of tar and glob to mitigate CVE-2025-64118 and CVE-2025-64756
+RUN NPM_CONFIG_STRICT_SSL=false npm install -g --no-package-lock --no-save prisma@6.17.1 tar@7.5.2 glob@11.1.0
 
 # Install dd-trace only if NEXT_PUBLIC_LANGFUSE_CLOUD_REGION is configured
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 RUN if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
-    NPM_CONFIG_STRICT_SSL=false npm install --no-package-lock --no-save dd-trace@5.65.0; \
+    NPM_CONFIG_STRICT_SSL=false npm install --no-package-lock --no-save dd-trace@5.65.0 tar@7.5.2 glob@11.1.0; \
     fi
 
 COPY --from=migrate-builder /go/bin/migrate /usr/bin/migrate
