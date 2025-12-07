@@ -81,6 +81,3 @@
 
       '@types/unist': 3.0.3
       '@types/unist': 3.0.3
-      is-bigint: 1.1.0
-      is-boolean-object: 1.2.2
-      is-number-object: 1.1.1
