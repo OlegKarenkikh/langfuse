@@ -18,7 +18,6 @@ RUN NPM_CONFIG_STRICT_SSL=false npm install turbo@^2.6.1 --global
 
 WORKDIR /app
 COPY . .
-# Verify that root package.json with packageManager field exists
 RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
     echo "ERROR: Root package.json with packageManager field not found."; \
     echo "Please run docker build from the repository root with: docker build -f ./web/Dockerfile -t <tag> ."; \
@@ -29,7 +28,7 @@ RUN turbo prune --scope=web --docker
 FROM public.ecr.aws/almalinux/almalinux:8 AS builder
 RUN dnf install -y --nogpgcheck almalinux-release \
     && dnf upgrade -y \
-    && dnf install -y curl git tar gzip \
+    && dnf install -y curl git tar gzip file \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs \
     && dnf clean all
@@ -47,12 +46,10 @@ ENV NPM_CONFIG_STRICT_SSL=false
 ENV PNPM_CONFIG_STRICT_SSL=false
 RUN NPM_CONFIG_STRICT_SSL=false npm install -g pnpm@9.15.0
 
-# Limit parallelism to avoid exceeding default file descriptor limits during build
 ENV NEXT_PRIVATE_WORKER_THREAD_COUNT=2
 
 WORKDIR /app
 
-# First install the dependencies (as they change less often)
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
@@ -62,7 +59,6 @@ RUN NPM_CONFIG_STRICT_SSL=false PNPM_CONFIG_STRICT_SSL=false NODE_TLS_REJECT_UNA
 ENV DOCKER_BUILD=1
 ENV NEXT_MANUAL_SIG_HANDLE=true
 
-# pass public variables in build step
 ARG NEXT_PUBLIC_PLAIN_APP_ID
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 ENV NEXT_PUBLIC_LANGFUSE_CLOUD_REGION=$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
@@ -85,8 +81,6 @@ ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ARG NEXT_PUBLIC_BASE_PATH
 ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 
-# Sentry already needs to be set on build time to upload sourcemaps
-# This must not be set for OSS releases as we would share our Sentry secret.
 ARG SENTRY_AUTH_TOKEN
 ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 ARG SENTRY_ORG
@@ -94,32 +88,34 @@ ENV SENTRY_ORG=$SENTRY_ORG
 ARG SENTRY_PROJECT
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
 
-# Accept build id as NEXT_PUBLIC_BUILD_ID
 ARG NEXT_PUBLIC_BUILD_ID
 ENV NEXT_PUBLIC_BUILD_ID=$NEXT_PUBLIC_BUILD_ID
 ENV SENTRY_RELEASE=$NEXT_PUBLIC_BUILD_ID
 
-# Copy source code of isolated subworkspace
 COPY --from=pruner /app/out/full/ .
 
-# remove middleware.ts if it exists - not needed in self-hosted environments
 RUN rm -f ./web/src/middleware.ts
 
-# Next.js collects completely anonymous telemetry data about general usage.
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_MANUAL_SIG_HANDLE=true
-# set the CI flag to true to get CI specific logs
 ENV CI=true
-
-# Optimize build for limited resources
 ENV TURBO_TELEMETRY_DISABLED=1
-# Increase memory and adjust build settings
+
 RUN ulimit -n 65536 && \
     NODE_OPTIONS='--max-old-space-size=4096' \
     TURBO_FORCE=true \
     pnpm turbo run build --filter=web... --no-cache
 
-# Production image, copy all the files and run next
+# CRITICAL: Clean up Go binaries from standalone after build
+RUN echo "Scanning for Go binaries in standalone build..." && \
+    find /app/web/.next/standalone -type f -executable -exec file {} \; | grep -i "go\|elf" | cut -d: -f1 | while read binary; do \
+        echo "Checking binary: $binary"; \
+        strings "$binary" 2>/dev/null | grep -q "golang\|runtime.goexit" && echo "Removing Go binary: $binary" && rm -f "$binary" || true; \
+    done || true
+
+# Remove any AWS SDK Go binaries if present
+RUN find /app/web/.next/standalone -type f -name "*aws*" -o -name "*golang*" -exec rm -f {} \; || true
+
 FROM public.ecr.aws/almalinux/almalinux:8 AS runner
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
@@ -147,31 +143,25 @@ RUN dnf install -y --nogpgcheck almalinux-release \
     && (rpm -e --nodeps $(rpm -qa | grep -E "^(python3-pip|platform-python-pip|python3-setuptools|platform-python-setuptools)") || true) \
     && dnf clean all
 
-# Don't run production as root
 ARG UID=1001
 ARG GID=1001
 RUN groupadd -g ${GID} nodejs && \
     useradd -u ${UID} -g nodejs -m -s /bin/sh nextjs
 
-# Install secure versions and Prisma for migrations (replaces golang-migrate)
 RUN NPM_CONFIG_STRICT_SSL=false npm install -g --no-package-lock --no-save \
     prisma@6.17.1 \
     tar@7.5.2 \
     glob@11.1.0 && \
     npm cache clean --force
 
-# Install dd-trace only if NEXT_PUBLIC_LANGFUSE_CLOUD_REGION is configured
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 RUN if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
     NPM_CONFIG_STRICT_SSL=false npm install --no-package-lock --no-save dd-trace@5.65.0 tar@7.5.2 glob@11.1.0 && npm cache clean --force; \
     fi
 
-# No migrate binary needed - using Prisma instead
-
 COPY --from=builder --chown=nextjs:nodejs /app/web/next.config.mjs .
 COPY --from=builder --chown=nextjs:nodejs /app/web/package.json .
 
-# Automatically leverage output traces to reduce image size
 COPY --from=builder --chown=nextjs:nodejs /app/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/web/.next/static ./web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/web/public ./web/public
