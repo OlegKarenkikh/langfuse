@@ -1,9 +1,16 @@
-FROM public.ecr.aws/docker/library/golang:1.24-alpine AS migrate-builder
-# Update system packages to latest versions (mitigation for CVE-2025-61725 and others)
-RUN apk update && apk upgrade
-# Verify Go version
-RUN go version
-RUN go install -tags 'postgres clickhouse' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.0
+# Stage 1: Download pre-compiled migrate binary (removes golang dependency)
+FROM public.ecr.aws/almalinux/almalinux:8 AS migrate-downloader
+RUN dnf install -y --nogpgcheck almalinux-release \
+    && dnf upgrade -y \
+    && dnf install -y curl tar gzip \
+    && dnf clean all
+
+# Download pre-compiled migrate binary for linux-amd64
+RUN curl -L https://github.com/golang-migrate/migrate/releases/download/v4.19.0/migrate.linux-amd64.tar.gz -o migrate.tar.gz \
+    && tar -xzf migrate.tar.gz \
+    && mv migrate /usr/bin/migrate \
+    && chmod +x /usr/bin/migrate \
+    && rm migrate.tar.gz
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
 RUN dnf install -y --nogpgcheck almalinux-release \
@@ -170,7 +177,8 @@ RUN if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
     NPM_CONFIG_STRICT_SSL=false npm install --no-package-lock --no-save dd-trace@5.65.0 tar@7.5.2 glob@11.1.0 && npm cache clean --force; \
     fi
 
-COPY --from=migrate-builder /go/bin/migrate /usr/bin/migrate
+# Copy pre-compiled migrate binary instead of Go-built one
+COPY --from=migrate-downloader /usr/bin/migrate /usr/bin/migrate
 
 COPY --from=builder --chown=nextjs:nodejs /app/web/next.config.mjs .
 COPY --from=builder --chown=nextjs:nodejs /app/web/package.json .
