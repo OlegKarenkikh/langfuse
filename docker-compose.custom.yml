@@ -1,10 +1,5 @@
 services:
   langfuse-worker:
-    build:
-      context: .
-      dockerfile: worker/Dockerfile
-      args:
-        - NEXT_PUBLIC_BUILD_ID=${NEXT_PUBLIC_BUILD_ID:-local}
     image: olegkarenkikh/langfuse_langfuse-worker:4
     restart: always
     depends_on:
@@ -13,20 +8,22 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
+      DIRECT_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      SALT: "your-salt"
-      ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
-      NEXTAUTH_SECRET: "your-nextauth-secret"
+      REDIS_AUTH: ${REDIS_PASSWORD:-}
+      SALT: ${SALT:-changeme}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-changeme}
+      # Отключение ClickHouse
+      CLICKHOUSE_MIGRATION_URL: ""
+      CLICKHOUSE_URL: ""
+      LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED: "true"
 
   langfuse-web:
-    build:
-      context: .
-      dockerfile: web/Dockerfile
-      args:
-        - NEXT_PUBLIC_BUILD_ID=${NEXT_PUBLIC_BUILD_ID:-local}
-    image: olegkarenkikh/langfuse_langfuse-web:4
+    image: olegkarenkikh/langfuse:web1
     restart: always
     depends_on:
       postgres:
@@ -36,28 +33,45 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
+      DIRECT_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      SALT: "your-salt"
-      ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
-      NEXTAUTH_SECRET: "your-nextauth-secret"
-      NEXTAUTH_URL: "http://localhost:3000"
+      REDIS_AUTH: ${REDIS_PASSWORD:-}
+      SALT: ${SALT:-changeme}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-changeme}
+      NEXTAUTH_URL: http://localhost:3000
+      # Отключение ClickHouse
+      CLICKHOUSE_MIGRATION_URL: ""
+      CLICKHOUSE_URL: ""
+      LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED: "true"
+      NEXT_TELEMETRY_DISABLED: 1
 
   redis:
-    image: docker.io/redis:7
+    image: docker.io/redis:7-alpine
     restart: always
+    command: >
+      sh -c "redis-server ${REDIS_PASSWORD:+--requirepass \"$$REDIS_PASSWORD\"}"
     ports:
       - "127.0.0.1:6379:6379"
+    volumes:
+      - langfuse_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: 
+        - CMD
+        - sh
+        - -c
+        - "redis-cli ${REDIS_PASSWORD:+-a \"$$REDIS_PASSWORD\"} ping | grep PONG"
       interval: 3s
       timeout: 10s
       retries: 10
 
   postgres:
-    image: docker.io/postgres:13
+    image: docker.io/postgres:16-alpine
     restart: always
+    shm_size: 128mb
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 3s
@@ -65,7 +79,7 @@ services:
       retries: 10
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: postgres
     ports:
       - "127.0.0.1:5432:5432"
@@ -74,4 +88,6 @@ services:
 
 volumes:
   langfuse_postgres_data:
+    driver: local
+  langfuse_redis_data:
     driver: local
