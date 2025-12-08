@@ -1,5 +1,10 @@
 services:
   langfuse-worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+      args:
+        - NEXT_PUBLIC_BUILD_ID=${NEXT_PUBLIC_BUILD_ID:-local}
     image: olegkarenkikh/langfuse_langfuse-worker:4
     restart: always
     depends_on:
@@ -7,23 +12,39 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    ports:
+      - "3030:3030"
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
       DIRECT_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_AUTH: ${REDIS_PASSWORD:-}
+      REDIS_AUTH: ${REDIS_PASSWORD:-myredissecret}
       SALT: ${SALT:-changeme}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-changeme}
-      # Отключение ClickHouse
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY:-}
       CLICKHOUSE_MIGRATION_URL: ""
       CLICKHOUSE_URL: ""
       LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED: "true"
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-false}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3030/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   langfuse-web:
-    image: olegkarenkikh/langfuse:web1
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      args:
+        - NEXT_PUBLIC_BUILD_ID=${NEXT_PUBLIC_BUILD_ID:-local}
+    image: olegkarenkikh/langfuse_langfuse-web:4
     restart: always
     depends_on:
       postgres:
@@ -38,32 +59,35 @@ services:
       DIRECT_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/postgres
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_AUTH: ${REDIS_PASSWORD:-}
+      REDIS_AUTH: ${REDIS_PASSWORD:-myredissecret}
       SALT: ${SALT:-changeme}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-changeme}
-      NEXTAUTH_URL: http://localhost:3000
-      # Отключение ClickHouse
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_INIT_PROJECT_SECRET_KEY:-}
       CLICKHOUSE_MIGRATION_URL: ""
       CLICKHOUSE_URL: ""
       LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED: "true"
       NEXT_TELEMETRY_DISABLED: 1
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-false}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/public/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   redis:
     image: docker.io/redis:7-alpine
     restart: always
-    command: >
-      sh -c "redis-server ${REDIS_PASSWORD:+--requirepass \"$$REDIS_PASSWORD\"}"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-myredissecret}
     ports:
       - "127.0.0.1:6379:6379"
     volumes:
       - langfuse_redis_data:/data
     healthcheck:
-      test: 
-        - CMD
-        - sh
-        - -c
-        - "redis-cli ${REDIS_PASSWORD:+-a \"$$REDIS_PASSWORD\"} ping | grep PONG"
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-myredissecret}", "ping"]
       interval: 3s
       timeout: 10s
       retries: 10
@@ -81,6 +105,8 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: postgres
+      TZ: UTC
+      PGTZ: UTC
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
