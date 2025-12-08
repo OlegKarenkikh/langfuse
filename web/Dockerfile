@@ -19,7 +19,6 @@ RUN NPM_CONFIG_STRICT_SSL=false npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
 # Verify that root package.json with packageManager field exists
-# This ensures the build context is the repository root, not the web/ directory
 RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
     echo "ERROR: Root package.json with packageManager field not found."; \
     echo "Please run docker build from the repository root with: docker build -f ./web/Dockerfile -t <tag> ."; \
@@ -107,15 +106,18 @@ COPY --from=pruner /app/out/full/ .
 RUN rm -f ./web/src/middleware.ts
 
 # Next.js collects completely anonymous telemetry data about general usage.
-# Learn more here: https://nextjs.org/telemetry
-# Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_MANUAL_SIG_HANDLE=true
 # set the CI flag to true to get CI specific logs
 ENV CI=true
 
-RUN ulimit -n 65536 \
-    && NODE_OPTIONS='--max-old-space-size=3072' pnpm turbo run build --filter=web...
+# Optimize build for limited resources
+ENV TURBO_TELEMETRY_DISABLED=1
+# Increase memory and adjust build settings
+RUN ulimit -n 65536 && \
+    NODE_OPTIONS='--max-old-space-size=4096' \
+    TURBO_FORCE=true \
+    pnpm turbo run build --filter=web... --no-cache
 
 # Production image, copy all the files and run next
 FROM public.ecr.aws/almalinux/almalinux:8 AS runner
@@ -131,11 +133,8 @@ ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 ENV NEXT_PUBLIC_LANGFUSE_CLOUD_REGION=$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 
 ENV NODE_ENV=production
-# Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED=1
-# Needed to re-enable validation of environment variables during runtime
 ENV DOCKER_BUILD=0
-# Set NEXT_MANUAL_SIG_HANDLE for runtime
 ENV NEXT_MANUAL_SIG_HANDLE=true
 
 RUN dnf install -y --nogpgcheck almalinux-release \
@@ -173,7 +172,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/web/next.config.mjs .
 COPY --from=builder --chown=nextjs:nodejs /app/web/package.json .
 
 # Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/web/.next/static ./web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/web/public ./web/public
@@ -187,12 +185,8 @@ RUN chmod +x ./web/entrypoint.sh
 
 USER nextjs
 
-# Default port to 3000
 ENV PORT=3000
 
-# Docker ENTRYPOINT (dumb-init) is covered by semantic versioning, not the entrypoint.sh itself
-# Reasoning: ENTRYPOINT is overridden by some self-hosted deployments, thus changing this is breaking
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "./web/entrypoint.sh"]
 
-# startup command - use dd-trace if NEXT_PUBLIC_LANGFUSE_CLOUD_REGION is configured
 CMD ["/bin/sh", "-c", "if [ -n \"$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION\" ]; then exec node --import dd-trace/initialize.mjs ./web/server.js --keepAliveTimeout 110000; else exec node ./web/server.js --keepAliveTimeout 110000; fi"]
