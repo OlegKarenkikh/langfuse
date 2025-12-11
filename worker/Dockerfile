@@ -28,6 +28,8 @@ ARG NEXT_PUBLIC_POSTHOG_HOST
 # Copy source code of isolated subworkspace
 COPY --from=pruner /app/out/full/ .
 
+RUN pnpm audit --audit-level=moderate
+
 RUN pnpm turbo run build --filter=worker...
 
 RUN pnpm prune --prod
