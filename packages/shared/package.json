@@ -89,7 +89,7 @@
     "ioredis": "^5.4.1",
     "ipaddr.js": "^2.2.0",
     "jsonpath-plus": "10.3.0",
-    "kysely": "workspace:*",
+    "kysely": "^0.28.8",
     "langchain": "^0.3.30",
     "langfuse-langchain": "3.38.6",
     "lodash": "^4.17.21",

@@ -91,10 +91,12 @@
     "tar": "^7.5.2",
     "jws": "^4.0.1",
     "solid-js": "^1.9.4",
-    "axios": "^1.7.9"
+    "axios": "^1.7.9",
+    "monorepo-symlink-test": "npm:empty-dir@^3.0.0"
   },
   "pnpm": {
     "overrides": {
+      "monorepo-symlink-test": "npm:empty-dir@^3.0.0",
       "nanoid": "^3.3.8",
       "katex": "^0.16.21",
       "tar-fs": "^2.1.2",
@@ -104,7 +106,7 @@
       "brace-expansion": "^2.0.2",
       "tar": "^7.5.2",
       "esbuild": "^0.25.0",
-      "kysely": "workspace:*",
+      "kysely": "^0.28.8",
       "js-yaml": "^4.1.1",
       "cross-spawn": "^7.0.5",
       "ws": "^8.18.3",
