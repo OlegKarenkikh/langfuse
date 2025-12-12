@@ -3,4 +3,5 @@ packages:
   - "web"
   - "worker"
   - "packages/**"
+  - "!packages/**/dist/**"
   - "ee"
