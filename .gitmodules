@@ -1,0 +1,3 @@
+[submodule "packages/kysely"]
+	path = packages/kysely
+	url = https://github.com/OlegKarenkikh/kysely.git
