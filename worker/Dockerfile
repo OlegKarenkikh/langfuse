@@ -1,11 +1,11 @@
-FROM public.ecr.aws/docker/library/node:24-alpine AS pruner
+FROM public.ecr.aws/docker/library/node:22-alpine AS pruner
 RUN apk update && apk add --no-cache libc6-compat tar gzip
 RUN npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
 RUN turbo prune --scope=worker --docker
 
-FROM public.ecr.aws/docker/library/node:24-alpine AS builder
+FROM public.ecr.aws/docker/library/node:22-alpine AS builder
 RUN apk update && apk add --no-cache libc6-compat git tar gzip
 RUN npm install -g pnpm@9.15.0
 
@@ -34,7 +34,7 @@ RUN pnpm turbo run build --filter=worker...
 
 RUN pnpm prune --prod
 
-FROM public.ecr.aws/docker/library/node:24-alpine AS runner
+FROM public.ecr.aws/docker/library/node:22-alpine AS runner
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM

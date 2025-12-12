@@ -2,7 +2,7 @@ FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
 RUN dnf install -y --nogpgcheck almalinux-release \
     && dnf upgrade -y \
     && dnf install -y curl \
-    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+    && curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - \
     && dnf install -y nodejs tar gzip \
     && dnf clean all
 
@@ -29,7 +29,7 @@ FROM public.ecr.aws/almalinux/almalinux:8 AS builder
 RUN dnf install -y --nogpgcheck almalinux-release \
     && dnf upgrade -y \
     && dnf install -y curl git tar gzip file python39 make gcc-c++ \
-    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+    && curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - \
     && dnf install -y nodejs \
     && dnf clean all
 
@@ -139,7 +139,7 @@ RUN dnf install -y --nogpgcheck almalinux-release \
     && dnf install -y epel-release \
     && dnf upgrade -y \
     && dnf install -y curl shadow-utils dumb-init \
-    && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
+    && curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - \
     && dnf install -y nodejs \
     && npm install -g npm@latest \
     && (rpm -e --nodeps $(rpm -qa | grep -E "^(python3-pip|platform-python-pip|python3-setuptools|platform-python-setuptools)") || true) \
