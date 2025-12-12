@@ -28,10 +28,12 @@ RUN turbo prune --scope=web --docker
 FROM public.ecr.aws/almalinux/almalinux:8 AS builder
 RUN dnf install -y --nogpgcheck almalinux-release \
     && dnf upgrade -y \
-    && dnf install -y curl git tar gzip file \
+    && dnf install -y curl git tar gzip file python39 make gcc-c++ \
     && curl -fsSL https://rpm.nodesource.com/setup_24.x | bash - \
     && dnf install -y nodejs \
     && dnf clean all
+
+ENV PYTHON=/usr/bin/python3.9
 
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
