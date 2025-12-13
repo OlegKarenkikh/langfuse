@@ -1,8 +1,8 @@
 FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
-RUN dnf install -y --nogpgcheck almalinux-release \
-    && dnf upgrade -y \
-    && dnf install -y curl \
-    && curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - \
+RUN echo "sslverify=False" >> /etc/dnf/dnf.conf \
+    && dnf install -y --nogpgcheck almalinux-release \
+    && dnf install -y curl git \
+    && curl -kfsSL https://rpm.nodesource.com/setup_22.x | bash - \
     && dnf install -y nodejs tar gzip \
     && dnf clean all
 
@@ -18,6 +18,7 @@ RUN NPM_CONFIG_STRICT_SSL=false npm install turbo@^2.6.1 --global
 
 WORKDIR /app
 COPY . .
+RUN ./scripts/ensure-kysely.sh
 RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
     echo "ERROR: Root package.json with packageManager field not found."; \
     echo "Please run docker build from the repository root with: docker build -f ./web/Dockerfile -t <tag> ."; \
@@ -26,10 +27,10 @@ RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json;
 RUN turbo prune --scope=web --docker
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS builder
-RUN dnf install -y --nogpgcheck almalinux-release \
-    && dnf upgrade -y \
+RUN echo "sslverify=False" >> /etc/dnf/dnf.conf \
+    && dnf install -y --nogpgcheck almalinux-release \
     && dnf install -y curl git tar gzip file python39 make gcc-toolset-12-gcc gcc-toolset-12-gcc-c++ \
-    && curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - \
+    && curl -kfsSL https://rpm.nodesource.com/setup_22.x | bash - \
     && dnf install -y nodejs \
     && dnf clean all
 
@@ -119,6 +120,8 @@ RUN echo "Scanning for Go binaries in standalone build..." && \
 RUN find /app/web/.next/standalone -type f -name "*aws*" -o -name "*golang*" -exec rm -f {} \; || true
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS runner
+RUN echo "sslverify=False" >> /etc/dnf/dnf.conf
+
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
 ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
