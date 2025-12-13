@@ -1,7 +1,7 @@
 FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
 RUN dnf install -y --nogpgcheck almalinux-release \
     && dnf upgrade -y \
-    && dnf install -y curl \
+    && dnf install -y curl git \
     && curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - \
     && dnf install -y nodejs tar gzip \
     && dnf clean all
@@ -18,6 +18,7 @@ RUN NPM_CONFIG_STRICT_SSL=false npm install turbo@^2.6.1 --global
 
 WORKDIR /app
 COPY . .
+RUN ./scripts/ensure-kysely.sh
 RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
     echo "ERROR: Root package.json with packageManager field not found."; \
     echo "Please run docker build from the repository root with: docker build -f ./web/Dockerfile -t <tag> ."; \

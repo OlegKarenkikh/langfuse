@@ -1,8 +1,9 @@
 FROM public.ecr.aws/docker/library/node:22-alpine AS pruner
-RUN apk update && apk add --no-cache libc6-compat tar gzip
+RUN apk update && apk add --no-cache libc6-compat tar gzip git
 RUN npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
+RUN ./scripts/ensure-kysely.sh
 RUN turbo prune --scope=worker --docker
 
 FROM public.ecr.aws/docker/library/node:22-alpine AS builder
