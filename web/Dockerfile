@@ -8,8 +8,8 @@ WORKDIR /kysely
 RUN git clone https://github.com/Olegkarenkikh/kysely.git . && \
     git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
 
-# Установить только TypeScript для компиляции (БЕЗ всех зависимостей)
-RUN npm install --no-save typescript@latest --ignore-scripts
+# Установить только TypeScript для компиляции
+RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
 
 # Скомпилировать TypeScript → JavaScript
 RUN npx tsc -p tsconfig.json && \
@@ -19,8 +19,31 @@ RUN npx tsc -p tsconfig.json && \
 RUN ls -la dist/cjs/index.js dist/esm/index.js || \
     (echo "❌ Build failed: dist files not found" && exit 1)
 
-# Очистить node_modules (они не нужны для runtime)
-RUN rm -rf node_modules
+# ✅ КРИТИЧНО: Создать ЧИСТЫЙ package.json для workspace
+RUN cat > package.json.clean << 'EOF'
+{
+  "name": "kysely",
+  "version": "0.28.8",
+  "description": "Type safe SQL query builder",
+  "license": "MIT",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  }
+}
+EOF
+
+# Заменить оригинальный package.json на чистый
+RUN mv package.json package.json.original && \
+    mv package.json.clean package.json
+
+# Удалить всё лишнее
+RUN rm -rf node_modules test scripts docs site example .github
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
 RUN dnf install -y --nogpgcheck almalinux-release \
@@ -48,6 +71,10 @@ RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json;
     echo "ERROR: Root package.json with packageManager field not found."; \
     exit 1; \
     fi
+
+# Проверка что kysely package.json валиден
+RUN node -e "JSON.parse(require('fs').readFileSync('./packages/kysely/package.json', 'utf8'))" || \
+    (echo "❌ kysely package.json is invalid" && exit 1)
 
 RUN turbo prune --scope=web --docker
 
