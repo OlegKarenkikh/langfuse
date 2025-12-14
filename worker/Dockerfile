@@ -3,15 +3,13 @@ RUN apk update && apk add --no-cache libc6-compat tar gzip git
 RUN npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
+# Убедиться что submodule инициализирован корректно
+RUN rm -rf ./packages/kysely && \
+    git submodule update --init --recursive packages/kysely || \
+    ./scripts/ensure-kysely.sh
 
-# Ensure kysely submodule is initialized
-RUN ./scripts/ensure-kysely.sh && \
-    test -f ./packages/kysely/package.json || \
-    (echo "❌ ERROR: packages/kysely/package.json not found after ensure-kysely.sh" && exit 1)
-
-# Debug: Show workspace structure
-RUN echo "Workspace packages:" && \
-    ls -la packages/*/package.json || true
+# FIX: Remove extra closing brace in kysely/site/package.json causing turbo prune failure
+RUN sed -i '$d' packages/kysely/site/package.json
 
 RUN turbo prune --scope=worker --docker
 
