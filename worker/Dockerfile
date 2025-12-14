@@ -7,6 +7,10 @@ COPY . .
 RUN rm -rf ./packages/kysely && \
     git submodule update --init --recursive packages/kysely || \
     ./scripts/ensure-kysely.sh
+
+# FIX: Remove extra closing brace in kysely/site/package.json causing turbo prune failure
+RUN sed -i '$d' packages/kysely/site/package.json
+
 RUN turbo prune --scope=worker --docker
 
 FROM public.ecr.aws/docker/library/node:22-alpine AS builder

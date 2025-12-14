@@ -22,6 +22,10 @@ COPY . .
 RUN rm -rf ./packages/kysely && \
     git submodule update --init --recursive packages/kysely || \
     ./scripts/ensure-kysely.sh
+
+# FIX: Remove extra closing brace in kysely/site/package.json causing turbo prune failure
+RUN sed -i '$d' packages/kysely/site/package.json
+
 RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
     echo "ERROR: Root package.json with packageManager field not found."; \
     echo "Please run docker build from the repository root with: docker build -f ./web/Dockerfile -t <tag> ."; \
