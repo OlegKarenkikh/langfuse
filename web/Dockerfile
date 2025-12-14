@@ -31,6 +31,11 @@ RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json;
     echo "Please run docker build from the repository root with: docker build -f ./web/Dockerfile -t <tag> ."; \
     exit 1; \
     fi
+
+# Debug: Show workspace structure
+RUN echo "Workspace packages:" && \
+    ls -la packages/*/package.json || true
+
 RUN turbo prune --scope=web --docker
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS builder
