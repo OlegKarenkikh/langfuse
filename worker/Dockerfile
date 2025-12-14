@@ -38,6 +38,9 @@ COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
+# Update next to safe version
+RUN pnpm update next --lockfile-only
+
 RUN pnpm install --no-frozen-lockfile
 
 # pass public variables in build step
