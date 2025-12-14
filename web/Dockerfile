@@ -90,7 +90,8 @@ COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
-RUN NPM_CONFIG_STRICT_SSL=false PNPM_CONFIG_STRICT_SSL=false NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm install --no-frozen-lockfile
+# Use --no-frozen-lockfile to resolve mismatch between lockfile and simplified packages
+RUN PNPM_CONFIG_STRICT_SSL=false NPM_CONFIG_STRICT_SSL=false NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm install --no-frozen-lockfile
 
 ENV DOCKER_BUILD=1
 ENV NEXT_MANUAL_SIG_HANDLE=true
