@@ -1,15 +1,34 @@
+FROM public.ecr.aws/docker/library/node:22-alpine AS kysely-builder
+RUN apk update && apk add --no-cache git
+WORKDIR /kysely
+RUN git clone https://github.com/Olegkarenkikh/kysely.git . && \
+    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+
+# ✅ Установить только TypeScript для компиляции
+RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
+
+# Скомпилировать TypeScript → JavaScript
+RUN npx tsc -p tsconfig.json && \
+    npx tsc -p tsconfig-cjs.json
+
+# Проверить что сборка успешна
+RUN ls -la dist/cjs/index.js dist/esm/index.js || \
+    (echo "❌ Build failed: dist files not found" && exit 1)
+
+# Удалить только node_modules и test файлы, оставить оригинальный package.json
+RUN rm -rf node_modules test example site scripts .github
+# Replace build script with no-op since it is prebuilt
+RUN sed -i 's/"build": ".*"/"build": "true"/g' package.json
+# Add types field to package.json so dependent packages can find definitions
+RUN sed -i 's|"main": "dist/cjs/index.js",|"main": "dist/cjs/index.js", "types": "dist/cjs/index.d.ts",|' package.json
+
 FROM public.ecr.aws/docker/library/node:22-alpine AS pruner
 RUN apk update && apk add --no-cache libc6-compat tar gzip git
 RUN npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
-# Убедиться что submodule инициализирован корректно
-RUN rm -rf ./packages/kysely && \
-    git submodule update --init --recursive packages/kysely || \
-    ./scripts/ensure-kysely.sh
-
-# FIX: Remove extra closing brace in kysely/site/package.json causing turbo prune failure
-RUN sed -i '$d' packages/kysely/site/package.json
+RUN rm -rf packages/kysely
+COPY --from=kysely-builder /kysely ./packages/kysely
 
 RUN turbo prune --scope=worker --docker
 
@@ -24,7 +43,7 @@ COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # pass public variables in build step
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
@@ -54,8 +73,8 @@ WORKDIR /app
 ARG NEXT_PUBLIC_BUILD_ID
 ENV BUILD_ID=$NEXT_PUBLIC_BUILD_ID
 
-ENV NODE_ENV production
-ENV DOCKER_BUILD 0
+ENV NODE_ENV=production
+ENV DOCKER_BUILD=0
 
 # Don't run production as root
 ARG UID=1001

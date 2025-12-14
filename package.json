@@ -119,7 +119,7 @@
       "babel-helpers": "^7.26.10",
       "vite": "^7.0.8",
       "nodemailer": "^7.0.11",
-      "next": "^15.5.7",
+      "next": "^15.5.8",
       "mdast-util-to-hast": "^13.2.1",
       "jws": "^4.0.1",
       "solid-js": "^1.9.4",

@@ -5,7 +5,7 @@ services:
       dockerfile: worker/Dockerfile
       args:
         - NEXT_PUBLIC_BUILD_ID=${NEXT_PUBLIC_BUILD_ID:-local}
-    image: olegkarenkikh/langfuse_langfuse-worker:4
+    image: olegkarenkikh/langfuse:worker-4
     restart: always
     depends_on:
       postgres:
@@ -44,7 +44,7 @@ services:
       dockerfile: web/Dockerfile
       args:
         - NEXT_PUBLIC_BUILD_ID=${NEXT_PUBLIC_BUILD_ID:-local}
-    image: olegkarenkikh/langfuse_langfuse-web:4
+    image: olegkarenkikh/langfuse:web-4
     restart: always
     depends_on:
       postgres:
