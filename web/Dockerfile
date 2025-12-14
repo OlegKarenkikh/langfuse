@@ -19,31 +19,11 @@ RUN npx tsc -p tsconfig.json && \
 RUN ls -la dist/cjs/index.js dist/esm/index.js || \
     (echo "❌ Build failed: dist files not found" && exit 1)
 
-# ✅ КРИТИЧНО: Создать ЧИСТЫЙ package.json для workspace
-RUN cat > package.json.clean << 'EOF'
-{
-  "name": "kysely",
-  "version": "0.28.8",
-  "description": "Type safe SQL query builder",
-  "license": "MIT",
-  "main": "dist/cjs/index.js",
-  "module": "dist/esm/index.js",
-  "types": "dist/cjs/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js"
-    }
-  }
-}
-EOF
+# Очистить node_modules (НЕ трогая package.json!)
+RUN rm -rf node_modules
 
-# Заменить оригинальный package.json на чистый
-RUN mv package.json package.json.original && \
-    mv package.json.clean package.json
-
-# Удалить всё лишнее
-RUN rm -rf node_modules test scripts docs site example .github
+# Удалить ненужные файлы для оптимизации
+RUN rm -rf test site example docs .github
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
 RUN dnf install -y --nogpgcheck almalinux-release \
@@ -110,7 +90,7 @@ COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
-RUN NPM_CONFIG_STRICT_SSL=false PNPM_CONFIG_STRICT_SSL=false NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm install --frozen-lockfile
+RUN NPM_CONFIG_STRICT_SSL=false PNPM_CONFIG_STRICT_SSL=false NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm install --no-frozen-lockfile
 
 ENV DOCKER_BUILD=1
 ENV NEXT_MANUAL_SIG_HANDLE=true
