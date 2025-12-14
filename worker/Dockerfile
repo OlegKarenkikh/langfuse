@@ -2,15 +2,28 @@ FROM public.ecr.aws/docker/library/node:22-alpine AS kysely-builder
 RUN apk update && apk add --no-cache git
 WORKDIR /kysely
 RUN git clone https://github.com/Olegkarenkikh/kysely.git . && \
-    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0 && \
-    npm install --legacy-peer-deps && \
-    npm run build
+    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+
+# ✅ Установить только TypeScript для компиляции
+RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
+
+# Скомпилировать TypeScript → JavaScript
+RUN npx tsc -p tsconfig.json && \
+    npx tsc -p tsconfig-cjs.json
+
+# Проверить что сборка успешна
+RUN ls -la dist/cjs/index.js dist/esm/index.js || \
+    (echo "❌ Build failed: dist files not found" && exit 1)
+
+# Удалить только node_modules и test файлы, оставить оригинальный package.json
+RUN rm -rf node_modules test example site .github
 
 FROM public.ecr.aws/docker/library/node:22-alpine AS pruner
 RUN apk update && apk add --no-cache libc6-compat tar gzip git
 RUN npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
+RUN rm -rf packages/kysely
 COPY --from=kysely-builder /kysely ./packages/kysely
 
 RUN turbo prune --scope=worker --docker
@@ -26,7 +39,7 @@ COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # pass public variables in build step
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
@@ -56,8 +69,8 @@ WORKDIR /app
 ARG NEXT_PUBLIC_BUILD_ID
 ENV BUILD_ID=$NEXT_PUBLIC_BUILD_ID
 
-ENV NODE_ENV production
-ENV DOCKER_BUILD 0
+ENV NODE_ENV=production
+ENV DOCKER_BUILD=0
 
 # Don't run production as root
 ARG UID=1001

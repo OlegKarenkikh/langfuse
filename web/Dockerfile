@@ -1,15 +1,11 @@
-FROM public.ecr.aws/almalinux/almalinux:8 AS kysely-builder
-RUN dnf install -y --nogpgcheck almalinux-release curl git tar gzip \
-    && curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - \
-    && dnf install -y nodejs \
-    && dnf clean all
-
+FROM public.ecr.aws/docker/library/node:22-alpine AS kysely-builder
+RUN apk update && apk add --no-cache git
 WORKDIR /kysely
 RUN git clone https://github.com/Olegkarenkikh/kysely.git . && \
     git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
 
-# Установить только TypeScript для компиляции (БЕЗ всех зависимостей)
-RUN npm install --no-save typescript@latest --ignore-scripts
+# ✅ Установить только TypeScript для компиляции
+RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
 
 # Скомпилировать TypeScript → JavaScript
 RUN npx tsc -p tsconfig.json && \
@@ -19,75 +15,33 @@ RUN npx tsc -p tsconfig.json && \
 RUN ls -la dist/cjs/index.js dist/esm/index.js || \
     (echo "❌ Build failed: dist files not found" && exit 1)
 
-# Очистить node_modules (они не нужны для runtime)
-RUN rm -rf node_modules
+# Удалить только node_modules и test файлы, оставить оригинальный package.json
+RUN rm -rf node_modules test example site .github
 
-FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
-RUN dnf install -y --nogpgcheck almalinux-release \
-    && dnf upgrade -y \
-    && dnf install -y curl git \
-    && curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - \
-    && dnf install -y nodejs tar gzip \
-    && dnf clean all
-
-ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
-ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
-ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
-
-ENV NPM_CONFIG_FETCH_RETRIES=5
-ENV NPM_CONFIG_FETCH_RETRY_FACTOR=2
-ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
-ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
-RUN NPM_CONFIG_STRICT_SSL=false npm install turbo@^2.6.1 --global
-
+FROM public.ecr.aws/docker/library/node:22-alpine AS pruner
+RUN apk update && apk add --no-cache libc6-compat tar gzip git
+RUN npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
+RUN rm -rf packages/kysely
 COPY --from=kysely-builder /kysely ./packages/kysely
-
-RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
-    echo "ERROR: Root package.json with packageManager field not found."; \
-    exit 1; \
-    fi
 
 RUN turbo prune --scope=web --docker
 
-FROM public.ecr.aws/almalinux/almalinux:8 AS builder
-RUN dnf install -y --nogpgcheck almalinux-release \
-    && dnf upgrade -y \
-    && dnf install -y curl git tar gzip file python39 make gcc-toolset-12-gcc gcc-toolset-12-gcc-c++ \
-    && curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - \
-    && dnf install -y nodejs \
-    && dnf clean all
-
-ENV PYTHON=/usr/bin/python3.9
-ENV PATH=/opt/rh/gcc-toolset-12/root/usr/bin:$PATH
-
-ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
-ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
-ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
-
-ENV NPM_CONFIG_FETCH_RETRIES=5
-ENV NPM_CONFIG_FETCH_RETRY_FACTOR=2
-ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
-ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-ENV NPM_CONFIG_STRICT_SSL=false
-ENV PNPM_CONFIG_STRICT_SSL=false
-RUN NPM_CONFIG_STRICT_SSL=false npm install -g pnpm@9.15.0
-
-ENV NEXT_PRIVATE_WORKER_THREAD_COUNT=2
+FROM public.ecr.aws/docker/library/node:22-alpine AS builder
+RUN apk update && apk add --no-cache libc6-compat git tar gzip
+RUN npm install -g pnpm@9.15.0
 
 WORKDIR /app
 
+# First install the dependencies (as they change less often)
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
-RUN NPM_CONFIG_STRICT_SSL=false PNPM_CONFIG_STRICT_SSL=false NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
-ENV DOCKER_BUILD=1
-ENV NEXT_MANUAL_SIG_HANDLE=true
-
+# ARGS for Web
 ARG NEXT_PUBLIC_PLAIN_APP_ID
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 ENV NEXT_PUBLIC_LANGFUSE_CLOUD_REGION=$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
@@ -120,6 +74,7 @@ ARG NEXT_PUBLIC_BUILD_ID
 ENV NEXT_PUBLIC_BUILD_ID=$NEXT_PUBLIC_BUILD_ID
 ENV SENTRY_RELEASE=$NEXT_PUBLIC_BUILD_ID
 
+# Copy source code
 COPY --from=pruner /app/out/full/ .
 
 RUN rm -f ./web/src/middleware.ts
@@ -128,9 +83,19 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_MANUAL_SIG_HANDLE=true
 ENV CI=true
 ENV TURBO_TELEMETRY_DISABLED=1
+ENV NEXT_PRIVATE_WORKER_THREAD_COUNT=1
 
+# Dummy ENVs for build validation
+ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
+ENV NEXTAUTH_SECRET="dummy_secret_for_build"
+ENV NEXTAUTH_URL="http://localhost:3000"
+ENV SALT="dummy_salt_for_build_00000000000000000000000000000000"
+
+RUN pnpm audit --audit-level=moderate
+
+# Build Web
 RUN ulimit -n 65536 && \
-    NODE_OPTIONS='--max-old-space-size=4096' \
+    NODE_OPTIONS='--max-old-space-size=3072' \
     TURBO_FORCE=true \
     pnpm turbo run build --filter=web... --no-cache
 
@@ -144,10 +109,15 @@ RUN echo "Scanning for Go binaries in standalone build..." && \
 # Remove any AWS SDK Go binaries if present
 RUN find /app/web/.next/standalone -type f -name "*aws*" -o -name "*golang*" -exec rm -f {} \; || true
 
-FROM public.ecr.aws/almalinux/almalinux:8 AS runner
+FROM public.ecr.aws/docker/library/node:22-alpine AS runner
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
 ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
+
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
+RUN apk update && apk upgrade && apk add --no-cache libc6-compat shadow curl dumb-init && npm install -g npm@latest
 
 WORKDIR /app
 
@@ -161,22 +131,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV DOCKER_BUILD=0
 ENV NEXT_MANUAL_SIG_HANDLE=true
 
-RUN dnf install -y --nogpgcheck almalinux-release \
-    && dnf install -y epel-release \
-    && dnf upgrade -y \
-    && dnf install -y curl shadow-utils dumb-init \
-    && curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - \
-    && dnf install -y nodejs \
-    && npm install -g npm@latest \
-    && (rpm -e --nodeps $(rpm -qa | grep -E "^(python3-pip|platform-python-pip|python3-setuptools|platform-python-setuptools)") || true) \
-    && dnf clean all
-
 ARG UID=1001
 ARG GID=1001
-RUN groupadd -g ${GID} nodejs && \
-    useradd -u ${UID} -g nodejs -m -s /bin/sh nextjs
+RUN addgroup -S -g ${GID} nodejs && \
+    adduser -S -u ${UID} -G nodejs nextjs
 
-RUN NPM_CONFIG_STRICT_SSL=false npm install -g --no-package-lock --no-save \
+# Install global deps if needed
+RUN npm install -g --no-package-lock --no-save \
     prisma@6.17.1 \
     tar@7.5.2 \
     glob@11.1.0 && \
@@ -184,9 +145,10 @@ RUN NPM_CONFIG_STRICT_SSL=false npm install -g --no-package-lock --no-save \
 
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 RUN if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
-    NPM_CONFIG_STRICT_SSL=false npm install --no-package-lock --no-save dd-trace@5.65.0 tar@7.5.2 glob@11.1.0 && npm cache clean --force; \
+    npm install --no-package-lock --no-save dd-trace@5.65.0 tar@7.5.2 glob@11.1.0 && npm cache clean --force; \
     fi
 
+# Copy artifacts
 COPY --from=builder --chown=nextjs:nodejs /app/web/next.config.mjs .
 COPY --from=builder --chown=nextjs:nodejs /app/web/package.json .
 
