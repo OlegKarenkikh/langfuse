@@ -3,7 +3,10 @@ RUN apk update && apk add --no-cache libc6-compat tar gzip git
 RUN npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
-RUN ./scripts/ensure-kysely.sh
+# Убедиться что submodule инициализирован корректно
+RUN rm -rf ./packages/kysely && \
+    git submodule update --init --recursive packages/kysely || \
+    ./scripts/ensure-kysely.sh
 RUN turbo prune --scope=worker --docker
 
 FROM public.ecr.aws/docker/library/node:22-alpine AS builder
