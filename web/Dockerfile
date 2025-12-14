@@ -1,8 +1,11 @@
 FROM public.ecr.aws/almalinux/almalinux:8 AS kysely-builder
-RUN dnf install -y --nogpgcheck almalinux-release curl git tar gzip \
+RUN dnf install -y --nogpgcheck almalinux-release curl git tar gzip python39 make gcc-toolset-12-gcc gcc-toolset-12-gcc-c++ \
     && curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - \
     && dnf install -y nodejs \
     && dnf clean all
+
+ENV PYTHON=/usr/bin/python3.9
+ENV PATH=/opt/rh/gcc-toolset-12/root/usr/bin:$PATH
 
 WORKDIR /kysely
 RUN git clone https://github.com/Olegkarenkikh/kysely.git . && \
@@ -31,6 +34,8 @@ RUN NPM_CONFIG_STRICT_SSL=false npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
 COPY --from=kysely-builder /kysely ./packages/kysely
+
+RUN sed -i '$d' packages/kysely/site/package.json
 
 RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
     echo "ERROR: Root package.json with packageManager field not found."; \

@@ -1,5 +1,5 @@
 FROM public.ecr.aws/docker/library/node:22-alpine AS kysely-builder
-RUN apk update && apk add --no-cache git
+RUN apk update && apk add --no-cache git python3 make g++
 WORKDIR /kysely
 RUN git clone https://github.com/Olegkarenkikh/kysely.git . && \
     git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0 && \
@@ -12,6 +12,8 @@ RUN npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
 COPY --from=kysely-builder /kysely ./packages/kysely
+
+RUN sed -i '$d' packages/kysely/site/package.json
 
 RUN turbo prune --scope=worker --docker
 
