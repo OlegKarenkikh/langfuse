@@ -16,7 +16,7 @@ RUN ls -la dist/cjs/index.js dist/esm/index.js || \
     (echo "❌ Build failed: dist files not found" && exit 1)
 
 # Удалить только node_modules и test файлы, оставить оригинальный package.json
-RUN rm -rf node_modules test example site scripts .github
+RUN rm -rf node_modules test example site .github
 
 FROM public.ecr.aws/docker/library/node:22-alpine AS pruner
 RUN apk update && apk add --no-cache libc6-compat tar gzip git
