@@ -18,15 +18,22 @@ RUN NPM_CONFIG_STRICT_SSL=false npm install turbo@^2.6.1 --global
 
 WORKDIR /app
 COPY . .
-# Убедиться что submodule инициализирован корректно
-RUN rm -rf ./packages/kysely && \
-    git submodule update --init --recursive packages/kysely || \
-    ./scripts/ensure-kysely.sh
+
+# Ensure kysely submodule is initialized
+RUN ./scripts/ensure-kysely.sh && \
+    test -f ./packages/kysely/package.json || \
+    (echo "❌ ERROR: packages/kysely/package.json not found after ensure-kysely.sh" && exit 1)
+
 RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
     echo "ERROR: Root package.json with packageManager field not found."; \
     echo "Please run docker build from the repository root with: docker build -f ./web/Dockerfile -t <tag> ."; \
     exit 1; \
     fi
+
+# Debug: Show workspace structure
+RUN echo "Workspace packages:" && \
+    ls -la packages/*/package.json || true
+
 RUN turbo prune --scope=web --docker
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS builder
