@@ -11,7 +11,31 @@ if [ -f "$KYS_PATH/package.json" ]; then
 fi
 
 echo "Fetching Kysely from $KYS_REPO at commit $KYS_COMMIT..."
-rm -rf "$KYS_PATH"
+
+# Clean up any existing directory (for example an empty submodule checkout)
+if [ -d "$KYS_PATH" ] || [ -f "$KYS_PATH" ]; then
+  rm -rf "$KYS_PATH"
+fi
 mkdir -p "$(dirname "$KYS_PATH")"
-git clone "$KYS_REPO" "$KYS_PATH"
-git -C "$KYS_PATH" checkout "$KYS_COMMIT"
+
+TEMP_DIR=$(mktemp -d)
+
+cleanup() {
+  rm -rf "$TEMP_DIR"
+}
+trap cleanup EXIT INT HUP TERM
+
+git clone --filter=blob:none "$KYS_REPO" "$TEMP_DIR"
+git -C "$TEMP_DIR" fetch --depth 1 origin "$KYS_COMMIT"
+git -C "$TEMP_DIR" checkout "$KYS_COMMIT"
+
+if [ ! -f "$TEMP_DIR/package.json" ]; then
+  echo "Failed to fetch Kysely: package.json missing after checkout"
+  exit 1
+fi
+
+mv "$TEMP_DIR" "$KYS_PATH"
+trap - EXIT INT HUP TERM
+cleanup
+
+echo "Kysely fetched successfully into $KYS_PATH"
