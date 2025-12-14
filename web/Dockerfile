@@ -1,3 +1,15 @@
+FROM public.ecr.aws/almalinux/almalinux:8 AS kysely-builder
+RUN dnf install -y --nogpgcheck almalinux-release curl git tar gzip \
+    && curl -fsSL https://rpm.nodesource.com/setup_22.x | bash - \
+    && dnf install -y nodejs \
+    && dnf clean all
+
+WORKDIR /kysely
+RUN git clone https://github.com/Olegkarenkikh/kysely.git . && \
+    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0 && \
+    npm install --legacy-peer-deps && \
+    npm run build
+
 FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
 RUN dnf install -y --nogpgcheck almalinux-release \
     && dnf upgrade -y \
@@ -18,23 +30,12 @@ RUN NPM_CONFIG_STRICT_SSL=false npm install turbo@^2.6.1 --global
 
 WORKDIR /app
 COPY . .
-# Убедиться что submodule инициализирован корректно
-RUN rm -rf ./packages/kysely && \
-    git submodule update --init --recursive packages/kysely || \
-    ./scripts/ensure-kysely.sh
-
-# FIX: Remove extra closing brace in kysely/site/package.json causing turbo prune failure
-RUN sed -i '$d' packages/kysely/site/package.json
+COPY --from=kysely-builder /kysely ./packages/kysely
 
 RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
     echo "ERROR: Root package.json with packageManager field not found."; \
-    echo "Please run docker build from the repository root with: docker build -f ./web/Dockerfile -t <tag> ."; \
     exit 1; \
     fi
-
-# Debug: Show workspace structure
-RUN echo "Workspace packages:" && \
-    ls -la packages/*/package.json || true
 
 RUN turbo prune --scope=web --docker
 
