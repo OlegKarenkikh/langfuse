@@ -6,9 +6,21 @@ RUN dnf install -y --nogpgcheck almalinux-release curl git tar gzip \
 
 WORKDIR /kysely
 RUN git clone https://github.com/Olegkarenkikh/kysely.git . && \
-    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0 && \
-    npm install --legacy-peer-deps && \
-    npm run build
+    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+
+# Установить только TypeScript для компиляции (БЕЗ всех зависимостей)
+RUN npm install --no-save typescript@latest --ignore-scripts
+
+# Скомпилировать TypeScript → JavaScript
+RUN npx tsc -p tsconfig.json && \
+    npx tsc -p tsconfig-cjs.json
+
+# Проверить что сборка успешна
+RUN ls -la dist/cjs/index.js dist/esm/index.js || \
+    (echo "❌ Build failed: dist files not found" && exit 1)
+
+# Очистить node_modules (они не нужны для runtime)
+RUN rm -rf node_modules
 
 FROM public.ecr.aws/almalinux/almalinux:8 AS pruner
 RUN dnf install -y --nogpgcheck almalinux-release \
