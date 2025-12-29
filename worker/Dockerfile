@@ -31,7 +31,7 @@ COPY --from=kysely-builder /kysely ./packages/kysely
 RUN turbo prune --scope=worker --docker
 
 FROM public.ecr.aws/docker/library/node:22-alpine AS builder
-RUN apk update && apk add --no-cache libc6-compat git tar gzip
+RUN apk update && apk add --no-cache libc6-compat git tar gzip python3 make g++
 RUN npm install -g pnpm@9.15.0
 
 WORKDIR /app
