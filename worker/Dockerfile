@@ -23,6 +23,7 @@ RUN apk update && apk add --no-cache libc6-compat tar gzip git
 RUN npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
+RUN rm -rf packages/kysely
 COPY --from=kysely-builder /kysely ./packages/kysely
 
 RUN turbo prune --scope=worker --docker

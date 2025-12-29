@@ -31,6 +31,7 @@ RUN npm install turbo@^2.6.1 --global
 
 WORKDIR /app
 COPY . .
+RUN rm -rf packages/kysely
 COPY --from=kysely-builder /kysely ./packages/kysely
 
 RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
