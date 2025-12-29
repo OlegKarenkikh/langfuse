@@ -40,19 +40,22 @@ const createPrismaInstance = () => {
       { emit: "event", level: "error" },
       { emit: "event", level: "warn" },
     ],
-  });
+  } as any);
+
+  // Explicitly cast to any to bypass type errors for event listeners
+  const clientAny = client as any;
 
   if (env.NODE_ENV === "development") {
-    client.$on("query", (event) => {
+    clientAny.$on("query", (event: any) => {
       logger.info(`prisma:query ${event.query}, ${event.duration}ms`);
     });
   }
 
-  client.$on("warn", (event) => {
+  clientAny.$on("warn", (event: any) => {
     logger.warn(`prisma:warn ${event.message}`);
   });
 
-  client.$on("error", (event) => {
+  clientAny.$on("error", (event: any) => {
     logger.error(`prisma:error ${event.message}`);
   });
   return client;

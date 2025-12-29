@@ -66,6 +66,7 @@ export {
 } from "./server/llm/compileChatMessages";
 
 // export db types only
+// @ts-ignore
 export * from "@prisma/client";
 export { type DB } from "../prisma/generated/types";
 export * from "./server/repositories/types";

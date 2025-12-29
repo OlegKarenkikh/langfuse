@@ -48,7 +48,7 @@ RUN node -e "JSON.parse(require('fs').readFileSync('./packages/kysely/package.js
 RUN turbo prune --scope=web --docker
 
 FROM public.ecr.aws/docker/library/node:22-alpine AS builder
-RUN apk update && apk add --no-cache libc6-compat git tar gzip python3 make g++
+RUN apk update && apk add --no-cache libc6-compat git tar gzip python3 make g++ openssl openssl-dev
 
 ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
 ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
