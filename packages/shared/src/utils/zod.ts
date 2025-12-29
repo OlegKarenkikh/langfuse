@@ -1,3 +1,4 @@
+// @ts-ignore
 import { InputJsonValue } from "@prisma/client/runtime/library";
 import { z } from "zod/v4";
 

@@ -136,5 +136,8 @@
     "patchedDependencies": {
       "next-auth@4.24.12": "patches/next-auth@4.24.12.patch"
     }
+  },
+  "dependencies": {
+    "@prisma/client": "7.2.0"
   }
 }
