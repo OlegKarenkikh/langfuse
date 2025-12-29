@@ -121,8 +121,7 @@ ENV NEXT_MANUAL_SIG_HANDLE=true
 ENV CI=true
 ENV TURBO_TELEMETRY_DISABLED=1
 
-RUN ulimit -n 65536 && \
-    NODE_OPTIONS='--max-old-space-size=4096' \
+RUN NODE_OPTIONS='--max-old-space-size=4096' \
     TURBO_FORCE=true \
     pnpm turbo run build --filter=web... --no-cache
 
