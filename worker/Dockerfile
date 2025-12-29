@@ -1,8 +1,10 @@
 FROM public.ecr.aws/docker/library/node:22-alpine AS kysely-builder
 RUN apk update && apk add --no-cache git
 WORKDIR /kysely
-RUN git clone https://github.com/Olegkarenkikh/kysely.git . && \
+RUN git clone https://github.com/OlegKarenkikh/kysely.git . && \
     git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+
+RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
 
 # ✅ Установить только TypeScript для компиляции
 RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
@@ -23,6 +25,7 @@ RUN apk update && apk add --no-cache libc6-compat tar gzip git
 RUN npm install turbo@^2.6.1 --global
 WORKDIR /app
 COPY . .
+RUN rm -rf packages/kysely
 COPY --from=kysely-builder /kysely ./packages/kysely
 
 RUN turbo prune --scope=worker --docker
