@@ -60,42 +60,32 @@ ARG NEXT_PUBLIC_POSTHOG_HOST
 # Copy source code of isolated subworkspace
 COPY --from=pruner /app/out/full/ .
 
+# Restore kysely dist (dropped by turbo prune)
+COPY --from=kysely-builder /kysely/dist ./packages/kysely/dist
+
 RUN pnpm audit --audit-level=moderate
 
-# ======= ДОБАВИТЬ ДИАГНОСТИКУ =======
-RUN echo "=== Checking environment ===" && \
-    echo "Node version: $(node --version)" && \
-    echo "PNPM version: $(pnpm --version)" && \
-    echo "Turbo version: $(turbo --version)" && \
-    echo "" && \
-    echo "=== Checking kysely ===" && \
-    ls -la packages/kysely/dist/ || echo "kysely dist not found" && \
-    ls -la packages/kysely/package.json && \
-    cat packages/kysely/package.json | head -30 && \
-    echo "" && \
-    echo "=== Checking worker dependencies ===" && \
-    cat worker/package.json | grep -A 5 '"dependencies"' && \
-    echo "" && \
-    echo "=== Checking workspace structure ===" && \
-    ls -la packages/ && \
-    ls -la worker/ && \
-    echo "" && \
-    echo "=== Checking pnpm workspace ===" && \
-    pnpm list --depth=0 || true && \
-    echo "" && \
-    echo "=== Checking TypeScript in worker ===" && \
-    cd worker && which tsc && tsc --version || echo "tsc not found in PATH"
+# ======= КРАТКАЯ ДИАГНОСТИКА =======
+RUN echo "=== Checking kysely dist ===" && \
+    ls -la packages/kysely/dist/cjs/index.js packages/kysely/dist/esm/index.js && \
+    echo "=== kysely package.json exports ===" && \
+    cat packages/kysely/package.json | grep -A 20 '"exports"'
 
-# Попробуйте сначала собрать shared
-RUN echo "=== Building shared package ===" && \
-    pnpm turbo run build --filter=@langfuse/shared... --log-order=stream --output-logs=new-only || \
-    (echo "❌ Failed to build shared" && exit 1)
+# Сначала попробуем собрать @langfuse/shared без фильтров и с полным логом
+RUN echo "=== Building @langfuse/shared directly ===" && \
+    cd packages/shared && \
+    npx prisma generate && \
+    pnpm run build 2>&1 | tee /tmp/shared-build.log || \
+    (echo "❌ Shared build failed, showing last 100 lines:" && \
+     tail -100 /tmp/shared-build.log && \
+     exit 1)
 
-# Теперь соберите worker с подробным логом
-RUN echo "=== Building worker ===" && \
-    pnpm turbo run build --filter=worker... --log-order=stream --output-logs=new-only || \
-    (echo "❌ Failed to build worker, checking errors..." && \
-     cd worker && pnpm run build 2>&1 || true && \
+# Теперь worker
+RUN echo "=== Building worker directly ===" && \
+    cd worker && \
+    pnpm run build 2>&1 | tee /tmp/worker-build.log || \
+    (echo "❌ Worker build failed, showing last 100 lines:" && \
+     tail -100 /tmp/worker-build.log && \
      exit 1)
 # ======= КОНЕЦ ДИАГНОСТИКИ =======
 
