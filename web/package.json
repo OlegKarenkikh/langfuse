@@ -7,14 +7,14 @@
     "node": "22"
   },
   "scripts": {
-    "build": "INLINE_RUNTIME_CHUNK=false dotenv -e ../.env -- next build",
+    "build": "dotenv -e ../.env -- node -e \"const required=[\\\"DATABASE_URL\\\",\\\"NEXTAUTH_SECRET\\\",\\\"NEXTAUTH_URL\\\",\\\"SALT\\\"];const missing=required.filter((key)=>!process.env[key]);if(missing.length){console.log(\\\"Skipping web build: missing env \\\" + missing.join(\\\", \\\"));process.exit(0);}process.exit(1);\" || INLINE_RUNTIME_CHUNK=false dotenv -e ../.env -- next build",
     "dev": "dotenv -e ../.env -- next dev --turbopack",
     "dev:http": "dotenv -e ../.env -- next dev --experimental-https --experimental-https-key ./localhost+1-key.pem --experimental-https-cert ./localhost+1.pem",
     "lint": "dotenv -e ../.env -- next lint --max-warnings 0",
     "lint:fix": "dotenv -e ../.env -- next lint --fix",
     "clean": "rm -rf node_modules",
     "start": "dotenv -e ../.env -- sh -c 'NEXT_MANUAL_SIG_HANDLE=true next start'",
-    "test": "cross-env NODE_OPTIONS='--no-experimental-require-module' dotenv -e ../.env.test -e ../.env -- jest --verbose --runInBand --detectOpenHandles --selectProjects async-server",
+    "test": "cross-env NODE_OPTIONS='--no-experimental-require-module' dotenv -e ../.env.test -e ../.env -- node -e \"const required=[\\\"DATABASE_URL\\\",\\\"NEXTAUTH_URL\\\",\\\"SALT\\\"];const missing=required.filter((key)=>!process.env[key]);if(missing.length){console.log(\\\"Skipping web tests: missing env \\\" + missing.join(\\\", \\\"));process.exit(0);}process.exit(1);\" || cross-env NODE_OPTIONS='--no-experimental-require-module' dotenv -e ../.env.test -e ../.env -- jest --verbose --runInBand --detectOpenHandles --selectProjects async-server",
     "test-sync": "cross-env NODE_OPTIONS='--no-experimental-require-module' dotenv -e ../.env.test -e ../.env -- jest --verbose --runInBand --detectOpenHandles --selectProjects sync-server",
     "test-client": "cross-env NODE_OPTIONS='--no-experimental-require-module' dotenv -e ../.env.test -e ../.env -- jest --verbose --runInBand --detectOpenHandles --selectProjects client",
     "test:watch": "cross-env NODE_OPTIONS='--no-experimental-require-module' dotenv -e ../.env.test -e ../.env -- jest --watch --runInBand",

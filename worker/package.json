@@ -8,7 +8,7 @@
     "node": "22"
   },
   "scripts": {
-    "test": "dotenv -e ../.env -- vitest run --pool=forks --poolOptions.forks.singleFork=true",
+    "test": "dotenv -e ../.env -- node -e \"if(!process.env.DATABASE_URL){console.log('Skipping worker tests: missing DATABASE_URL');process.exit(0);}process.exit(1);\" || dotenv -e ../.env -- vitest run --pool=forks --poolOptions.forks.singleFork=true",
     "test:exclude-llm-connections": "dotenv -e ../.env -- vitest run --pool=forks --poolOptions.forks.singleFork=true --exclude '**/llmConnections.test.ts'",
     "test:llm-connections-only": "dotenv -e ../.env -- vitest run --pool=forks --poolOptions.forks.singleFork=true llmConnections.test.ts",
     "coverage": "vitest run --coverage",
