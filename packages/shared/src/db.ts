@@ -30,11 +30,11 @@ export class PrismaClientSingleton {
 const createPrismaInstance = () => {
   // @ts-ignore - Prisma 7 type issue with datasources in monorepo
   const client = new PrismaClient({
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
+    // datasources: {
+    //   db: {
+    //     url: process.env.DATABASE_URL,
+    //   },
+    // },
     log: [
       { emit: "event", level: "query" },
       { emit: "event", level: "error" },

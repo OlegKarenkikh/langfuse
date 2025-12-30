@@ -1,0 +1,380 @@
+
+> web@3.134.0 dev /app/web
+> dotenv -e ../.env -- next dev --turbopack
+
+ ⚠ i18n configuration in next.config.mjs is unsupported in App Router.
+Learn more about internationalization in App Router: https://nextjs.org/docs/app/building-your-application/routing/internationalization
+   ▲ Next.js 16.0.10 (Turbopack)
+   - Local:         http://localhost:3000
+   - Network:       http://192.168.0.2:3000
+   - Environments: .env
+   - Experiments (use with caution):
+     ✓ browserDebugInfoInTerminal
+     · clientTraceMetadata
+
+ ✓ Starting...
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+ ✓ Ready in 4.5s
+ ○ Compiling / ...
+ GET / 200 in 76ms (compile: 41ms, render: 35ms)
+ ○ Compiling /api/auth/[...nextauth] ...
+ GET / 200 in 64ms (compile: 31ms, render: 33ms)
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/server/auth.ts:9:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2179:30)
+    at <unknown> (src/pages/api/auth/[...nextauth].ts:1:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2883:30)
+    at Object.<anonymous> (.next/dev/server/pages/api/auth/[...nextauth].js:47:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ ○ Compiling /_error ...
+ GET /api/auth/session 500 in 8.3s (compile: 8.1s, render: 172ms)
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/server/auth.ts:9:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2179:30)
+    at <unknown> (src/pages/api/auth/[...nextauth].ts:1:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2883:30)
+    at Object.<anonymous> (.next/dev/server/pages/api/auth/[...nextauth].js:47:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ POST /api/auth/_log 500 in 292ms (compile: 276ms, render: 15ms)
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/server/auth.ts:9:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2179:30)
+    at <unknown> (src/pages/api/auth/[...nextauth].ts:1:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2883:30)
+    at Object.<anonymous> (.next/dev/server/pages/api/auth/[...nextauth].js:47:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ GET /api/auth/session 500 in 213ms (compile: 191ms, render: 22ms)
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/server/auth.ts:9:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2179:30)
+    at <unknown> (src/pages/api/auth/[...nextauth].ts:1:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2883:30)
+    at Object.<anonymous> (.next/dev/server/pages/api/auth/[...nextauth].js:47:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/server/auth.ts:9:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2179:30)
+    at <unknown> (src/pages/api/auth/[...nextauth].ts:1:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2883:30)
+    at Object.<anonymous> (.next/dev/server/pages/api/auth/[...nextauth].js:47:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ POST /api/auth/_log 500 in 1008ms (compile: 987ms, render: 21ms)
+ GET /api/auth/session 500 in 455ms (compile: 424ms, render: 31ms)
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/server/auth.ts:9:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2179:30)
+    at <unknown> (src/pages/api/auth/[...nextauth].ts:1:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2883:30)
+    at Object.<anonymous> (.next/dev/server/pages/api/auth/[...nextauth].js:47:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ POST /api/auth/_log 500 in 291ms (compile: 252ms, render: 39ms)
+[browser] [next-auth][error][CLIENT_FETCH_ERROR]
+https://next-auth.js.org/errors#client_fetch_error Unexpected token '<', "<!DOCTYPE "... is not valid JSON {
+  error: {
+    message: [32m`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m,
+    name: [32m'SyntaxError'[39m,
+    stack: [32m`SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m
+  },
+  message: [32m`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m,
+  url: [32m'/api/auth/session'[39m
+}
+    at new Promise (<anonymous>) (<anonymous>)
+[browser] [next-auth][error][CLIENT_FETCH_ERROR]
+https://next-auth.js.org/errors#client_fetch_error Unexpected token '<', "<!DOCTYPE "... is not valid JSON {
+  error: {
+    message: [32m`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m,
+    name: [32m'SyntaxError'[39m,
+    stack: [32m`SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m
+  },
+  message: [32m`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m,
+  url: [32m'/api/auth/session'[39m
+}
+    at new Promise (<anonymous>) (<anonymous>)
+[browser] [next-auth][error][CLIENT_FETCH_ERROR]
+https://next-auth.js.org/errors#client_fetch_error Unexpected token '<', "<!DOCTYPE "... is not valid JSON {
+  error: {
+    message: [32m`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m,
+    name: [32m'SyntaxError'[39m,
+    stack: [32m`SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m
+  },
+  message: [32m`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m,
+  url: [32m'/api/auth/session'[39m
+}
+    at new Promise (<anonymous>) (<anonymous>)
+ ○ Compiling /auth/sign-in ...
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/ee/features/multi-tenant-sso/utils.ts:13:1)
+    at module evaluation (.next/dev/server/chunks/ssr/web_src_6d7a1ac0._.js:696:30)
+    at <unknown> (src/pages/auth/sign-in.tsx:36:1)
+    at module evaluation (.next/dev/server/chunks/ssr/web_src_6d7a1ac0._.js:995:30)
+    at Object.<anonymous> (.next/dev/server/pages/auth/sign-in.js:74:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL, {
+  page: '/auth/sign-in'
+}
+ GET /_next/data/development/en/auth/sign-in.json 500 in 4.0s (compile: 4.0s, render: 21ms)
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/ee/features/multi-tenant-sso/utils.ts:13:1)
+    at module evaluation (.next/dev/server/chunks/ssr/web_src_6d7a1ac0._.js:696:30)
+    at <unknown> (src/pages/auth/sign-in.tsx:36:1)
+    at module evaluation (.next/dev/server/chunks/ssr/web_src_6d7a1ac0._.js:995:30)
+    at Object.<anonymous> (.next/dev/server/pages/auth/sign-in.js:74:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL, {
+  page: '/auth/sign-in'
+}
+ GET /auth/sign-in 500 in 164ms (compile: 145ms, render: 19ms)
+[browser] Uncaught PrismaClientConstructorValidationError: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/ee/features/multi-tenant-sso/utils.ts:13:1)
+    at module evaluation (src/ee/features/multi-tenant-sso/types.ts:204:2)
+    at <unknown> (src/pages/auth/sign-in.tsx:36:1)
+    at module evaluation (src/features/auth/components/AuthProviderButton.tsx:41:1)
+    at Object.<anonymous> (.next/dev/server/pages/auth/sign-in.js:74:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ ○ Compiling /project/[projectId]/traces/[traceId] ...
+ GET /project/default/traces/mock-trace-id 200 in 8.8s (compile: 8.8s, render: 49ms)
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/server/auth.ts:9:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2179:30)
+    at <unknown> (src/pages/api/auth/[...nextauth].ts:1:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2883:30)
+    at Object.<anonymous> (.next/dev/server/pages/api/auth/[...nextauth].js:47:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ GET /api/auth/session 500 in 233ms (compile: 213ms, render: 20ms)
+[browser] [next-auth][error][CLIENT_FETCH_ERROR]
+https://next-auth.js.org/errors#client_fetch_error Unexpected token '<', "<!DOCTYPE "... is not valid JSON {
+  error: {
+    message: [32m`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m,
+    name: [32m'SyntaxError'[39m,
+    stack: [32m`SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m
+  },
+  message: [32m`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m,
+  url: [32m'/api/auth/session'[39m
+}
+    at new Promise (<anonymous>) (<anonymous>)
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/server/auth.ts:9:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2179:30)
+    at <unknown> (src/pages/api/auth/[...nextauth].ts:1:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2883:30)
+    at Object.<anonymous> (.next/dev/server/pages/api/auth/[...nextauth].js:47:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ POST /api/auth/_log 500 in 161ms (compile: 143ms, render: 18ms)
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/server/auth.ts:9:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2179:30)
+    at <unknown> (src/pages/api/auth/[...nextauth].ts:1:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2883:30)
+    at Object.<anonymous> (.next/dev/server/pages/api/auth/[...nextauth].js:47:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ GET /api/auth/session 500 in 251ms (compile: 214ms, render: 38ms)
+[browser] [next-auth][error][CLIENT_FETCH_ERROR]
+https://next-auth.js.org/errors#client_fetch_error Unexpected token '<', "<!DOCTYPE "... is not valid JSON {
+  error: {
+    message: [32m`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m,
+    name: [32m'SyntaxError'[39m,
+    stack: [32m`SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m
+  },
+  message: [32m`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m,
+  url: [32m'/api/auth/session'[39m
+}
+    at new Promise (<anonymous>) (<anonymous>)
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/server/auth.ts:9:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2179:30)
+    at <unknown> (src/pages/api/auth/[...nextauth].ts:1:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2883:30)
+    at Object.<anonymous> (.next/dev/server/pages/api/auth/[...nextauth].js:47:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/server/auth.ts:9:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2179:30)
+    at <unknown> (src/pages/api/auth/[...nextauth].ts:1:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2883:30)
+    at Object.<anonymous> (.next/dev/server/pages/api/auth/[...nextauth].js:47:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ POST /api/auth/_log 500 in 338ms (compile: 301ms, render: 37ms)
+ GET /api/auth/session 500 in 334ms (compile: 320ms, render: 14ms)
+[browser] [next-auth][error][CLIENT_FETCH_ERROR]
+https://next-auth.js.org/errors#client_fetch_error Unexpected token '<', "<!DOCTYPE "... is not valid JSON {
+  error: {
+    message: [32m`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m,
+    name: [32m'SyntaxError'[39m,
+    stack: [32m`SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m
+  },
+  message: [32m`Unexpected token '<', "<!DOCTYPE "... is not valid JSON`[39m,
+  url: [32m'/api/auth/session'[39m
+}
+    at new Promise (<anonymous>) (<anonymous>)
+ ⨯ Error [PrismaClientConstructorValidationError]: Unknown property datasources provided to PrismaClient constructor.
+Read more at https://pris.ly/d/client-constructor
+    at createPrismaInstance (../packages/shared/dist/src/db.js:41:20)
+    at module evaluation (../packages/shared/dist/src/db.js:92:33)
+    at <unknown> (src/server/auth.ts:9:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2179:30)
+    at <unknown> (src/pages/api/auth/[...nextauth].ts:1:1)
+    at module evaluation (.next/dev/server/chunks/web_src_daed14f0._.js:2883:30)
+    at Object.<anonymous> (.next/dev/server/pages/api/auth/[...nextauth].js:47:3)
+  39 | const createPrismaInstance = () => {
+  40 |     // @ts-ignore - Prisma 7 type issue with datasources in monorepo
+> 41 |     const client = new client_1.PrismaClient({
+     |                    ^
+  42 |         datasources: {
+  43 |             db: {
+  44 |                 url: process.env.DATABASE_URL,
+ POST /api/auth/_log 500 in 391ms (compile: 310ms, render: 81ms)
+[browser]  << query #1 traces.byIdWithObservationsAndScores {
+  context: {},
+  elapsedMs: 20,
+  input: {
+    projectId: 'default',
+    timestamp: undefined,
+    traceId: 'mock-trace-id'
+  },
+  result: '[object Error]'
+}
+[browser]  >> query #2 traces.byIdWithObservationsAndScores {
+  context: {},
+  input: {
+    projectId: 'default',
+    timestamp: undefined,
+    traceId: 'mock-trace-id'
+  }
+} (src/utils/api.ts:139:36)
+[browser]  >> query #1 traces.byIdWithObservationsAndScores {
+  context: {},
+  input: {
+    projectId: 'default',
+    timestamp: undefined,
+    traceId: 'mock-trace-id'
+  }
+} (src/utils/api.ts:139:36)
+ ○ Compiling /api/trpc/[trpc] ...
