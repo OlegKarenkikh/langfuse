@@ -114,6 +114,8 @@ ENV SENTRY_RELEASE=$NEXT_PUBLIC_BUILD_ID
 
 COPY --from=pruner /app/out/full/ .
 
+RUN if [ ! -f .env ]; then touch .env; fi
+
 RUN rm -f ./web/src/middleware.ts
 
 ENV NEXT_TELEMETRY_DISABLED=1
