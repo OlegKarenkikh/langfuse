@@ -21,14 +21,26 @@ RUN ls -la dist/cjs/index.js dist/esm/index.js || \
 RUN rm -rf node_modules test example site .github
 
 FROM public.ecr.aws/docker/library/node:22-alpine AS pruner
-RUN apk update && apk add --no-cache libc6-compat tar gzip git
-RUN npm install turbo@^2.6.1 --global
+RUN apk update && apk add --no-cache libc6-compat tar gzip git jq
 WORKDIR /app
 COPY . .
 RUN rm -rf packages/kysely
 COPY --from=kysely-builder /kysely ./packages/kysely
 
-RUN turbo prune --scope=worker --docker
+# Ручная "обрезка" для worker вместо turbo prune
+RUN mkdir -p /app/out/json /app/out/full
+
+# Копируем package.json файлы (эквивалент prune --docker)
+RUN cp package.json pnpm-lock.yaml pnpm-workspace.yaml /app/out/json/ && \
+    mkdir -p /app/out/json/worker /app/out/json/packages/shared /app/out/json/packages/kysely && \
+    cp worker/package.json /app/out/json/worker/ && \
+    cp packages/shared/package.json /app/out/json/packages/shared/ && \
+    cp packages/kysely/package.json /app/out/json/packages/kysely/
+
+# Копируем полный исходный код
+RUN cp -r worker /app/out/full/ && \
+    cp -r packages /app/out/full/ && \
+    cp package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json /app/out/full/
 
 FROM public.ecr.aws/docker/library/node:22-alpine AS builder
 RUN apk update && apk add --no-cache libc6-compat git tar gzip python3 make g++ openssl openssl-dev
