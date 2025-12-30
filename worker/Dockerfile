@@ -36,6 +36,9 @@ RUN npm install -g pnpm@9.15.0
 
 WORKDIR /app
 
+# Ensure devDependencies are installed for build-time generators like prisma-kysely.
+ENV PNPM_CONFIG_PRODUCTION=false
+
 # First install the dependencies (as they change less often)
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
