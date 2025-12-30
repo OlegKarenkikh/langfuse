@@ -1,0 +1,125 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 4.51kB 0.0s done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for public.ecr.aws/docker/library/node:22-alpine
+#2 DONE 0.9s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 131B 0.0s done
+#3 DONE 0.0s
+
+#4 [kysely-builder 1/9] FROM public.ecr.aws/docker/library/node:22-alpine@sha256:0340fa682d72068edf603c305bfbc10e23219fb0e40df58d9ea4d6f33a9798bf
+#4 DONE 0.0s
+
+#5 [runner 3/7] WORKDIR /app
+#5 CACHED
+
+#6 [runner 2/7] RUN apk update && apk upgrade && apk add --no-cache libc6-compat shadow curl dumb-init && npm install -g npm@latest
+#6 CACHED
+
+#7 [runner 4/7] RUN addgroup -S -g 1001 expressjs &&     adduser -S -u 1001 -G expressjs expressjs
+#7 CACHED
+
+#8 [internal] load build context
+#8 transferring context: 326.90kB 1.9s done
+#8 DONE 1.9s
+
+#9 [pruner 2/8] RUN apk update && apk add --no-cache libc6-compat tar gzip git
+#9 CACHED
+
+#10 [pruner 3/8] RUN npm install turbo@^2.6.1 --global
+#10 CACHED
+
+#11 [pruner 4/8] WORKDIR /app
+#11 CACHED
+
+#12 [kysely-builder 7/9] RUN npx tsc -p tsconfig.json &&     npx tsc -p tsconfig-cjs.json
+#12 CACHED
+
+#13 [kysely-builder 2/9] RUN apk update && apk add --no-cache git
+#13 CACHED
+
+#14 [kysely-builder 3/9] WORKDIR /kysely
+#14 CACHED
+
+#15 [kysely-builder 5/9] RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
+#15 CACHED
+
+#16 [kysely-builder 8/9] RUN ls -la dist/cjs/index.js dist/esm/index.js ||     (echo "❌ Build failed: dist files not found" && exit 1)
+#16 CACHED
+
+#17 [kysely-builder 4/9] RUN git clone https://github.com/OlegKarenkikh/kysely.git . &&     git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+#17 CACHED
+
+#18 [kysely-builder 6/9] RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
+#18 CACHED
+
+#19 [kysely-builder 9/9] RUN rm -rf node_modules test example site .github
+#19 CACHED
+
+#20 [pruner 5/8] COPY . .
+#20 DONE 26.6s
+
+#21 [pruner 6/8] RUN rm -rf packages/kysely
+#21 DONE 10.8s
+
+#22 [pruner 7/8] COPY --from=kysely-builder /kysely ./packages/kysely
+#22 DONE 5.5s
+
+#23 [pruner 8/8] RUN turbo prune --scope=worker --docker
+#23 3.847  WARNING  No locally installed `turbo` found in your repository. Using globally installed version (2.7.2), which can cause unexpected behavior.
+#23 3.847
+#23 3.847 Installing the version in your repository (^2.6.1) before calling `turbo` will result in more predictable behavior across environments.
+#23 3.857
+#23 3.857 Attention:
+#23 3.857 Turborepo now collects completely anonymous telemetry regarding usage.
+#23 3.857 This information is used to shape the Turborepo roadmap and prioritize features.
+#23 3.857 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#23 3.857 https://turborepo.com/docs/telemetry
+#23 3.857
+#23 3.857 • turbo 2.7.2
+#23 4.154 Generating pruned monorepo for worker in /app/out
+#23 4.311  - Added @langfuse/shared
+#23 4.313  - Added @repo/eslint-config
+#23 4.315  - Added @repo/typescript-config
+#23 4.664  - Added kysely
+#23 4.702  - Added worker
+#23 DONE 5.4s
+
+#24 [builder  6/17] COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+#24 CACHED
+
+#25 [builder  3/17] RUN npm install -g pnpm@9.15.0
+#25 CACHED
+
+#26 [builder  5/17] WORKDIR /app
+#26 CACHED
+
+#27 [builder  7/17] COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+#27 CACHED
+
+#28 [builder  8/17] COPY --from=pruner /app/out/json/ .
+#28 CACHED
+
+#29 [builder  2/17] RUN apk update && apk add --no-cache libc6-compat git tar gzip python3 make g++ openssl openssl-dev
+#29 CACHED
+
+#30 [builder  4/17] RUN npm install -g turbo@^2.6.1
+#30 CACHED
+
+#31 [builder  9/17] RUN pnpm update next --lockfile-only
+#31 CACHED
+
+#32 [builder 10/17] RUN pnpm install --no-frozen-lockfile
+#32 CACHED
+
+#33 [builder 11/17] COPY --from=pruner /app/out/full/ .
+#33 DONE 118.2s
+
+#34 [builder 12/17] COPY --from=kysely-builder /kysely/dist ./packages/kysely/dist
+#34 DONE 111.2s
+
+#35 [builder 13/17] RUN pnpm audit --audit-level=moderate
