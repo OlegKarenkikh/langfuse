@@ -74,11 +74,8 @@ RUN echo "=== Checking kysely dist ===" && \
 # Сначала попробуем собрать @langfuse/shared без фильтров и с полным логом
 RUN echo "=== Building @langfuse/shared directly ===" && \
     cd packages/shared && \
-    npx prisma generate && \
-    pnpm run build 2>&1 | tee /tmp/shared-build.log || \
-    (echo "❌ Shared build failed, showing last 100 lines:" && \
-     tail -100 /tmp/shared-build.log && \
-     exit 1)
+    (npx prisma generate 2>&1 | tee /tmp/prisma-generate.log || (echo "❌ Prisma generate failed:" && cat /tmp/prisma-generate.log && exit 1)) && \
+    (pnpm run build 2>&1 | tee /tmp/shared-build.log || (echo "❌ Shared build failed, showing last 100 lines:" && tail -100 /tmp/shared-build.log && exit 1))
 
 # Теперь worker
 RUN echo "=== Building worker directly ===" && \
