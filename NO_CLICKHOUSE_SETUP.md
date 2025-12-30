@@ -27,10 +27,9 @@ docker build \
 
 ### 2. Подготовка окружения
 
-```bash
-# Скопируйте конфигурацию без ClickHouse
-cp .env.no-clickhouse.example .env
-```
+Файл `.env` не обязателен: все значения для режима без ClickHouse уже заданы
+в `docker-compose.no-clickhouse.yml` через значения по умолчанию. Создайте
+`.env` только если хотите переопределить переменные (например, пароли или порты).
 
 ### 3. Запуск всех сервисов
 
@@ -110,9 +109,10 @@ echo "🚀 Сборка и тестирование БЕЗ ClickHouse: worker + 
 
 # 1. Подготовка
 echo "📝 Подготовка конфигурации..."
-if [ ! -f .env ]; then
-    cp .env.no-clickhouse.example .env
-    echo "✅ Конфигурация создана"
+if [ -f .env ]; then
+    echo "✅ Используем существующий .env"
+else
+    echo "ℹ️  .env не найден — используются значения по умолчанию из docker-compose"
 fi
 
 # 2. Сборка worker
@@ -188,7 +188,6 @@ docker compose -f docker-compose.no-clickhouse.yml up -d langfuse-web && sleep 1
 
 ### Полный тест:
 ```bash
-cp .env.no-clickhouse.example .env && \
 docker compose -f docker-compose.no-clickhouse.yml build && \
 docker compose -f docker-compose.no-clickhouse.yml up -d && \
 sleep 20 && \
@@ -291,6 +290,6 @@ docker-compose.no-clickhouse.yml
 ## Файлы конфигурации
 
 - `docker-compose.no-clickhouse.yml` - docker-compose без ClickHouse
-- `.env.no-clickhouse.example` - пример переменных окружения
+- `.env` (опционально) - локальные переопределения переменных окружения
 - `web/entrypoint.no-clickhouse.sh` - модифицированный entrypoint для web
 - `worker/entrypoint.no-clickhouse.sh` - модифицированный entrypoint для worker
