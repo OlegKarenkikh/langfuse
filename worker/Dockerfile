@@ -62,7 +62,30 @@ COPY --from=pruner /app/out/full/ .
 
 RUN pnpm audit --audit-level=moderate
 
-RUN pnpm turbo run build --filter=worker...
+# ======= КРАТКАЯ ДИАГНОСТИКА =======
+RUN echo "=== Checking kysely dist ===" && \
+    ls -la packages/kysely/dist/cjs/index.js packages/kysely/dist/esm/index.js && \
+    echo "=== kysely package.json exports ===" && \
+    cat packages/kysely/package.json | grep -A 20 '"exports"'
+
+# Сначала попробуем собрать @langfuse/shared без фильтров и с полным логом
+RUN set -o pipefail && \
+    echo "=== Building @langfuse/shared directly ===" && \
+    cd packages/shared && \
+    pnpm run build 2>&1 | tee /tmp/shared-build.log || \
+    (echo "❌ Shared build failed, showing last 100 lines:" && \
+     tail -100 /tmp/shared-build.log && \
+     exit 1)
+
+# Теперь worker
+RUN set -o pipefail && \
+    echo "=== Building worker directly ===" && \
+    cd worker && \
+    pnpm run build 2>&1 | tee /tmp/worker-build.log || \
+    (echo "❌ Worker build failed, showing last 100 lines:" && \
+     tail -100 /tmp/worker-build.log && \
+     exit 1)
+# ======= КОНЕЦ ДИАГНОСТИКИ =======
 
 RUN pnpm prune --prod
 

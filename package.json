@@ -8,7 +8,7 @@
     "node": "22"
   },
   "scripts": {
-    "preinstall": "npx only-allow pnpm",
+    "preinstall": "npx only-allow pnpm && ./scripts/ensure-kysely.sh",
     "infra:dev:up": "docker compose -f ./docker-compose.dev.yml up -d --wait",
     "infra:dev:down": "docker compose -f ./docker-compose.dev.yml down",
     "infra:dev:prune": "docker compose -f ./docker-compose.dev.yml down -v",
