@@ -124,6 +124,13 @@ ENV NEXT_MANUAL_SIG_HANDLE=true
 ENV CI=true
 ENV TURBO_TELEMETRY_DISABLED=1
 
+RUN echo "=== Checking environment ===" && \
+    ls -la /app/.env* || true && \
+    echo "=== Checking kysely ===" && \
+    ls -la /app/packages/kysely/dist/ && \
+    echo "=== Checking pnpm list ===" && \
+    pnpm list kysely || true
+
 RUN NODE_OPTIONS='--max-old-space-size=4096' \
     TURBO_FORCE=true \
     pnpm turbo run build --filter=web... --no-cache
