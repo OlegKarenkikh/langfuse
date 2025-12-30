@@ -33,6 +33,7 @@ RUN turbo prune --scope=worker --docker
 FROM public.ecr.aws/docker/library/node:22-alpine AS builder
 RUN apk update && apk add --no-cache libc6-compat git tar gzip python3 make g++ openssl openssl-dev
 RUN npm install -g pnpm@9.15.0
+RUN npm install -g turbo@^2.6.1
 
 WORKDIR /app
 
