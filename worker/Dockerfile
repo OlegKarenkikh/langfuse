@@ -62,7 +62,42 @@ COPY --from=pruner /app/out/full/ .
 
 RUN pnpm audit --audit-level=moderate
 
-RUN pnpm turbo run build --filter=worker...
+# ======= ДОБАВИТЬ ДИАГНОСТИКУ =======
+RUN echo "=== Checking environment ===" && \
+    echo "Node version: $(node --version)" && \
+    echo "PNPM version: $(pnpm --version)" && \
+    echo "Turbo version: $(turbo --version)" && \
+    echo "" && \
+    echo "=== Checking kysely ===" && \
+    ls -la packages/kysely/dist/ || echo "kysely dist not found" && \
+    ls -la packages/kysely/package.json && \
+    cat packages/kysely/package.json | head -30 && \
+    echo "" && \
+    echo "=== Checking worker dependencies ===" && \
+    cat worker/package.json | grep -A 5 '"dependencies"' && \
+    echo "" && \
+    echo "=== Checking workspace structure ===" && \
+    ls -la packages/ && \
+    ls -la worker/ && \
+    echo "" && \
+    echo "=== Checking pnpm workspace ===" && \
+    pnpm list --depth=0 || true && \
+    echo "" && \
+    echo "=== Checking TypeScript in worker ===" && \
+    cd worker && which tsc && tsc --version || echo "tsc not found in PATH"
+
+# Попробуйте сначала собрать shared
+RUN echo "=== Building shared package ===" && \
+    pnpm turbo run build --filter=@langfuse/shared... --log-order=stream --output-logs=new-only || \
+    (echo "❌ Failed to build shared" && exit 1)
+
+# Теперь соберите worker с подробным логом
+RUN echo "=== Building worker ===" && \
+    pnpm turbo run build --filter=worker... --log-order=stream --output-logs=new-only || \
+    (echo "❌ Failed to build worker, checking errors..." && \
+     cd worker && pnpm run build 2>&1 || true && \
+     exit 1)
+# ======= КОНЕЦ ДИАГНОСТИКИ =======
 
 RUN pnpm prune --prod
 
