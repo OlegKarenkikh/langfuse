@@ -215,18 +215,23 @@ function addLangfuseSystemNodes(
   return [...data, ...systemNodes];
 }
 
-export function buildStepData(
+function filterGraphEvents(
   agentGraphData: AgentGraphDataResponse[],
 ): AgentGraphDataResponse[] {
   // for now, we don't want to show SPAN/EVENTs in our agent graphs
-  // TODO: move this filter to a separate function
-  const filteredData = agentGraphData.filter(
+  return agentGraphData.filter(
     (item) =>
       // Just not show events for now
       // item.observationType !== ObservationType.SPAN &&
       // item.observationType !== ObservationType.GENERATION &&
       item.observationType !== ObservationType.EVENT,
   );
+}
+
+export function buildStepData(
+  agentGraphData: AgentGraphDataResponse[],
+): AgentGraphDataResponse[] {
+  const filteredData = filterGraphEvents(agentGraphData);
 
   // Assign step numbers based on global timing analysis
   const dataWithSteps = assignGlobalTimingSteps(filteredData);
