@@ -1,0 +1,184 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 4.51kB 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for public.ecr.aws/docker/library/node:22-alpine
+#2 DONE 0.5s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 131B done
+#3 DONE 0.0s
+
+#4 [kysely-builder 1/9] FROM public.ecr.aws/docker/library/node:22-alpine@sha256:0340fa682d72068edf603c305bfbc10e23219fb0e40df58d9ea4d6f33a9798bf
+#4 DONE 0.0s
+
+#5 [runner 3/7] WORKDIR /app
+#5 CACHED
+
+#6 [runner 2/7] RUN apk update && apk upgrade && apk add --no-cache libc6-compat shadow curl dumb-init && npm install -g npm@latest
+#6 CACHED
+
+#7 [runner 4/7] RUN addgroup -S -g 1001 expressjs &&     adduser -S -u 1001 -G expressjs expressjs
+#7 CACHED
+
+#8 [internal] load build context
+#8 transferring context: 309.42kB 0.5s done
+#8 DONE 0.5s
+
+#9 [pruner 2/8] RUN apk update && apk add --no-cache libc6-compat tar gzip git
+#9 CACHED
+
+#10 [pruner 3/8] RUN npm install turbo@^2.6.1 --global
+#10 CACHED
+
+#11 [kysely-builder 6/9] RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
+#11 CACHED
+
+#12 [kysely-builder 4/9] RUN git clone https://github.com/OlegKarenkikh/kysely.git . &&     git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+#12 CACHED
+
+#13 [kysely-builder 5/9] RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
+#13 CACHED
+
+#14 [kysely-builder 2/9] RUN apk update && apk add --no-cache git
+#14 CACHED
+
+#15 [kysely-builder 8/9] RUN ls -la dist/cjs/index.js dist/esm/index.js ||     (echo "❌ Build failed: dist files not found" && exit 1)
+#15 CACHED
+
+#16 [kysely-builder 3/9] WORKDIR /kysely
+#16 CACHED
+
+#17 [kysely-builder 7/9] RUN npx tsc -p tsconfig.json &&     npx tsc -p tsconfig-cjs.json
+#17 CACHED
+
+#18 [pruner 4/8] WORKDIR /app
+#18 CACHED
+
+#19 [kysely-builder 9/9] RUN rm -rf node_modules test example site .github
+#19 CACHED
+
+#20 [pruner 5/8] COPY . .
+#20 DONE 3.7s
+
+#21 [pruner 6/8] RUN rm -rf packages/kysely
+#21 DONE 1.4s
+
+#22 [pruner 7/8] COPY --from=kysely-builder /kysely ./packages/kysely
+#22 DONE 2.2s
+
+#23 [pruner 8/8] RUN turbo prune --scope=worker --docker
+#23 1.807  WARNING  No locally installed `turbo` found in your repository. Using globally installed version (2.7.2), which can cause unexpected behavior.
+#23 1.807
+#23 1.807 Installing the version in your repository (^2.6.1) before calling `turbo` will result in more predictable behavior across environments.
+#23 1.817
+#23 1.817 Attention:
+#23 1.817 Turborepo now collects completely anonymous telemetry regarding usage.
+#23 1.817 This information is used to shape the Turborepo roadmap and prioritize features.
+#23 1.817 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#23 1.817 https://turborepo.com/docs/telemetry
+#23 1.817
+#23 1.817 • turbo 2.7.2
+#23 2.077 Generating pruned monorepo for worker in /app/out
+#23 2.171  - Added @langfuse/shared
+#23 2.172  - Added @repo/eslint-config
+#23 2.173  - Added @repo/typescript-config
+#23 2.466  - Added kysely
+#23 2.499  - Added worker
+#23 DONE 3.2s
+
+#24 [builder  6/17] COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+#24 CACHED
+
+#25 [builder  7/17] COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+#25 CACHED
+
+#26 [builder  8/17] COPY --from=pruner /app/out/json/ .
+#26 CACHED
+
+#27 [builder  2/17] RUN apk update && apk add --no-cache libc6-compat git tar gzip python3 make g++ openssl openssl-dev
+#27 CACHED
+
+#28 [builder  5/17] WORKDIR /app
+#28 CACHED
+
+#29 [builder 11/17] COPY --from=pruner /app/out/full/ .
+#29 CACHED
+
+#30 [builder  3/17] RUN npm install -g pnpm@9.15.0
+#30 CACHED
+
+#31 [builder 10/17] RUN pnpm install --no-frozen-lockfile
+#31 CACHED
+
+#32 [builder  9/17] RUN pnpm update next --lockfile-only
+#32 CACHED
+
+#33 [builder  4/17] RUN npm install -g turbo@^2.6.1
+#33 CACHED
+
+#34 [builder 12/17] COPY --from=kysely-builder /kysely/dist ./packages/kysely/dist
+#34 CACHED
+
+#35 [builder 13/17] RUN pnpm audit --audit-level=moderate
+#35 78.12 No known vulnerabilities found
+#35 DONE 78.1s
+
+#36 [builder 14/17] RUN echo "=== Checking kysely dist ===" &&     ls -la packages/kysely/dist/cjs/index.js packages/kysely/dist/esm/index.js &&     echo "=== kysely package.json exports ===" &&     cat packages/kysely/package.json | grep -A 20 '"exports"'
+#36 81.10 === Checking kysely dist ===
+#36 81.10 -rw-r--r--    1 root     root         16167 Dec 30 15:55 packages/kysely/dist/cjs/index.js
+#36 81.10 -rw-r--r--    1 root     root         11187 Dec 30 15:55 packages/kysely/dist/esm/index.js
+#36 81.10 === kysely package.json exports ===
+#36 81.11   "exports": {
+#36 81.11     ".": {
+#36 81.11       "import": "./dist/esm/index.js",
+#36 81.11       "require": "./dist/cjs/index.js",
+#36 81.11       "default": "./dist/cjs/index.js"
+#36 81.11     },
+#36 81.11     "./helpers/postgres": {
+#36 81.11       "import": "./dist/esm/helpers/postgres.js",
+#36 81.11       "require": "./dist/cjs/helpers/postgres.js",
+#36 81.11       "default": "./dist/cjs/helpers/postgres.js"
+#36 81.11     },
+#36 81.11     "./helpers/mysql": {
+#36 81.11       "import": "./dist/esm/helpers/mysql.js",
+#36 81.11       "require": "./dist/cjs/helpers/mysql.js",
+#36 81.11       "default": "./dist/cjs/helpers/mysql.js"
+#36 81.11     },
+#36 81.11     "./helpers/mssql": {
+#36 81.11       "import": "./dist/esm/helpers/mssql.js",
+#36 81.11       "require": "./dist/cjs/helpers/mssql.js",
+#36 81.11       "default": "./dist/cjs/helpers/mssql.js"
+#36 81.11     },
+#36 DONE 81.1s
+
+#37 [builder 15/17] RUN echo "=== Building @langfuse/shared directly ===" &&     cd packages/shared &&     npx prisma generate &&     pnpm run build 2>&1 | tee /tmp/shared-build.log ||     (echo "❌ Shared build failed, showing last 100 lines:" &&      tail -100 /tmp/shared-build.log &&      exit 1)
+#37 70.28 === Building @langfuse/shared directly ===
+#37 73.07 Failed to load config file "/app/packages/shared" as a TypeScript/JavaScript module. Error: PrismaConfigEnvError: Cannot resolve environment variable: DATABASE_URL.
+#37 73.21 ❌ Shared build failed, showing last 100 lines:
+#37 73.21 tail: can't open '/tmp/shared-build.log': No such file or directory
+#37 73.21 tail: no files
+#37 ERROR: process "/bin/sh -c echo \"=== Building @langfuse/shared directly ===\" &&     cd packages/shared &&     npx prisma generate &&     pnpm run build 2>&1 | tee /tmp/shared-build.log ||     (echo \"❌ Shared build failed, showing last 100 lines:\" &&      tail -100 /tmp/shared-build.log &&      exit 1)" did not complete successfully: exit code: 1
+------
+ > [builder 15/17] RUN echo "=== Building @langfuse/shared directly ===" &&     cd packages/shared &&     npx prisma generate &&     pnpm run build 2>&1 | tee /tmp/shared-build.log ||     (echo "❌ Shared build failed, showing last 100 lines:" &&      tail -100 /tmp/shared-build.log &&      exit 1):
+70.28 === Building @langfuse/shared directly ===
+73.07 Failed to load config file "/app/packages/shared" as a TypeScript/JavaScript module. Error: PrismaConfigEnvError: Cannot resolve environment variable: DATABASE_URL.
+73.21 ❌ Shared build failed, showing last 100 lines:
+73.21 tail: can't open '/tmp/shared-build.log': No such file or directory
+73.21 tail: no files
+------
+Dockerfile:75
+--------------------
+  74 |     # Сначала попробуем собрать @langfuse/shared без фильтров и с полным логом
+  75 | >>> RUN echo "=== Building @langfuse/shared directly ===" && \
+  76 | >>>     cd packages/shared && \
+  77 | >>>     npx prisma generate && \
+  78 | >>>     pnpm run build 2>&1 | tee /tmp/shared-build.log || \
+  79 | >>>     (echo "❌ Shared build failed, showing last 100 lines:" && \
+  80 | >>>      tail -100 /tmp/shared-build.log && \
+  81 | >>>      exit 1)
+  82 |
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c echo \"=== Building @langfuse/shared directly ===\" &&     cd packages/shared &&     npx prisma generate &&     pnpm run build 2>&1 | tee /tmp/shared-build.log ||     (echo \"❌ Shared build failed, showing last 100 lines:\" &&      tail -100 /tmp/shared-build.log &&      exit 1)" did not complete successfully: exit code: 1

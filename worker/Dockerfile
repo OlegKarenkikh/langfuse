@@ -60,6 +60,9 @@ ARG NEXT_PUBLIC_POSTHOG_HOST
 # Copy source code of isolated subworkspace
 COPY --from=pruner /app/out/full/ .
 
+# Restore kysely dist (dropped by turbo prune)
+COPY --from=kysely-builder /kysely/dist ./packages/kysely/dist
+
 RUN pnpm audit --audit-level=moderate
 
 # ======= КРАТКАЯ ДИАГНОСТИКА =======

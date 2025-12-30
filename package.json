@@ -138,6 +138,7 @@
     }
   },
   "dependencies": {
-    "@prisma/client": "7.2.0"
+    "@prisma/client": "^7.2.0",
+    "prisma-kysely": "^1.8.0"
   }
 }
