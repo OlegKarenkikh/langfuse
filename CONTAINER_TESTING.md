@@ -343,8 +343,9 @@ docker compose -f docker-compose.build.yml down
 ### Быстрый старт (без ClickHouse)
 
 ```bash
-# Скопируйте .env файл
-cp .env.no-clickhouse.example .env
+# Опционально: создайте .env для переопределения переменных (по умолчанию не нужен)
+# Например, можно указать другие пароли/порты. Если .env нет, используются значения
+# по умолчанию из docker-compose.no-clickhouse.yml.
 
 # Соберите и запустите контейнеры
 docker compose -f docker-compose.no-clickhouse.yml up -d --build
