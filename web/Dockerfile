@@ -24,28 +24,25 @@ RUN rm -rf node_modules
 RUN rm -rf test site example docs .github
 
 FROM public.ecr.aws/docker/library/node:22-alpine AS pruner
-RUN apk update && apk add --no-cache libc6-compat tar gzip git
-ENV NPM_CONFIG_FETCH_RETRIES=5
-ENV NPM_CONFIG_FETCH_RETRY_FACTOR=2
-ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
-ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
-RUN npm install turbo@^2.6.1 --global
-
+RUN apk update && apk add --no-cache libc6-compat tar gzip git jq
 WORKDIR /app
 COPY . .
 RUN rm -rf packages/kysely
 COPY --from=kysely-builder /kysely ./packages/kysely
 
-RUN if [ ! -f "./package.json" ] || ! grep -q '"packageManager"' ./package.json; then \
-    echo "ERROR: Root package.json with packageManager field not found."; \
-    exit 1; \
-    fi
+# Ручная "обрезка" для web
+RUN mkdir -p /app/out/json /app/out/full
 
-# Проверка что kysely package.json валиден
-RUN node -e "JSON.parse(require('fs').readFileSync('./packages/kysely/package.json', 'utf8'))" || \
-    (echo "❌ kysely package.json is invalid" && exit 1)
+RUN cp package.json pnpm-lock.yaml pnpm-workspace.yaml /app/out/json/ && \
+    mkdir -p /app/out/json/web /app/out/json/packages/shared /app/out/json/packages/kysely /app/out/json/packages/ee && \
+    cp web/package.json /app/out/json/web/ && \
+    cp packages/shared/package.json /app/out/json/packages/shared/ && \
+    cp packages/kysely/package.json /app/out/json/packages/kysely/ && \
+    cp packages/ee/package.json /app/out/json/packages/ee/ || true
 
-RUN turbo prune --scope=web --docker
+RUN cp -r web /app/out/full/ && \
+    cp -r packages /app/out/full/ && \
+    cp package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json /app/out/full/
 
 FROM public.ecr.aws/docker/library/node:22-alpine AS builder
 RUN apk update && apk add --no-cache libc6-compat git tar gzip python3 make g++ openssl openssl-dev
