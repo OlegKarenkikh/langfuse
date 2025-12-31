@@ -1,0 +1,564 @@
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.06kB done
+#1 DONE 0.0s
+
+#2 [langfuse-worker internal] load build definition from Dockerfile
+#2 transferring dockerfile: 5.64kB 0.1s done
+#2 DONE 0.1s
+
+#3 [langfuse-web internal] load build definition from Dockerfile
+#3 transferring dockerfile: 7.42kB 0.0s done
+#3 DONE 0.1s
+
+#4 [langfuse-web internal] load metadata for docker.io/library/node:24-alpine
+#4 DONE 0.6s
+
+#5 [langfuse-web alpine 1/2] FROM docker.io/library/node:24-alpine@sha256:c921b97d4b74f51744057454b306b418cf693865e73b8100559189605f6955b8
+#5 DONE 0.0s
+
+#6 [langfuse-web runner  5/16] RUN if [ -n "" ]; then       npm install --no-package-lock --no-save dd-trace@5.81.0;     fi
+#6 CACHED
+
+#7 [langfuse-web runner  2/16] RUN apk add --no-cache dumb-init tzdata
+#7 CACHED
+
+#8 [langfuse-web runner  4/16] RUN npm install -g --no-package-lock --no-save prisma@7.2.0
+#8 CACHED
+
+#9 [langfuse-web runner  3/16] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 nextjs
+#9 CACHED
+
+#10 [langfuse-web runner  6/16] RUN MIGRATE_TARGET_ARCH=$(echo linux/amd64 | sed 's/\//-/g') &&     wget -q -O- https://github.com/golang-migrate/migrate/releases/download/v4.19.0/migrate.$MIGRATE_TARGET_ARCH.tar.gz | tar xvz &&     mv migrate /usr/bin/migrate
+#10 CACHED
+
+#11 [langfuse-web alpine 2/2] RUN apk update &&     apk upgrade --no-cache     libcrypto3     libssl3     libc6-compat     busybox     ssl_client
+#11 CACHED
+
+#12 [langfuse-web base 2/2] RUN corepack enable &&     corepack prepare pnpm@9.5.0 --activate
+#12 CACHED
+
+#13 [langfuse-web base 1/2] RUN npm install turbo@^2.7.1 --global
+#13 CACHED
+
+#14 [langfuse-web kysely-builder 2/8] WORKDIR /kysely
+#14 CACHED
+
+#15 [langfuse-web kysely-builder 7/8] RUN ls -la dist/cjs/index.js dist/esm/index.js ||     (echo "❌ Kysely build failed" && exit 1)
+#15 CACHED
+
+#16 [langfuse-web kysely-builder 6/8] RUN npx tsc -p tsconfig.json &&     npx tsc -p tsconfig-cjs.json
+#16 CACHED
+
+#17 [langfuse-web kysely-builder 5/8] RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
+#17 CACHED
+
+#18 [langfuse-web kysely-builder 3/8] RUN git clone https://github.com/OlegKarenkikh/kysely.git . &&     git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+#18 CACHED
+
+#19 [langfuse-web kysely-builder 4/8] RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
+#19 CACHED
+
+#20 [langfuse-web kysely-builder 1/8] RUN apk add --no-cache git
+#20 CACHED
+
+#21 [langfuse-web pruner 1/7] WORKDIR /app
+#21 CACHED
+
+#22 [langfuse-web kysely-builder 8/8] RUN rm -rf node_modules test site example docs .github
+#22 CACHED
+
+#23 [langfuse-web internal] load .dockerignore
+#23 transferring context: 131B 0.0s done
+#23 DONE 0.1s
+
+#5 [langfuse-worker alpine 1/2] FROM docker.io/library/node:24-alpine@sha256:c921b97d4b74f51744057454b306b418cf693865e73b8100559189605f6955b8
+#5 DONE 0.0s
+
+#12 [langfuse-worker base 2/2] RUN corepack enable &&     corepack prepare pnpm@9.5.0 --activate
+#12 CACHED
+
+#13 [langfuse-worker base 1/2] RUN npm install turbo@^2.7.1 --global
+#13 CACHED
+
+#11 [langfuse-worker alpine 2/2] RUN apk update &&     apk upgrade --no-cache     libcrypto3     libssl3     libc6-compat     busybox     ssl_client
+#11 CACHED
+
+#21 [langfuse-worker pruner 1/7] WORKDIR /app
+#21 CACHED
+
+#24 [langfuse-worker runner 1/6] RUN apk add --no-cache dumb-init
+#24 CACHED
+
+#25 [langfuse-worker runner 2/6] WORKDIR /app
+#25 CACHED
+
+#26 [langfuse-worker runner 3/6] RUN addgroup --system --gid 1001 expressjs &&     adduser --system --uid 1001 expressjs
+#26 CACHED
+
+#27 [langfuse-worker internal] load build context
+#27 transferring context: 35.35MB 2.5s done
+#27 DONE 2.6s
+
+#20 [langfuse-worker kysely-builder 1/8] RUN apk add --no-cache git
+#20 CACHED
+
+#14 [langfuse-worker kysely-builder 2/8] WORKDIR /kysely
+#14 CACHED
+
+#18 [langfuse-worker kysely-builder 3/8] RUN git clone https://github.com/OlegKarenkikh/kysely.git . &&     git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+#18 CACHED
+
+#28 [langfuse-worker kysely-builder 7/8] RUN ls -la dist/cjs/index.js dist/esm/index.js ||     (echo "❌ Kysely build failed: dist files not found" && exit 1)
+#28 CACHED
+
+#19 [langfuse-worker kysely-builder 4/8] RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
+#19 CACHED
+
+#17 [langfuse-worker kysely-builder 5/8] RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
+#17 CACHED
+
+#16 [langfuse-worker kysely-builder 6/8] RUN npx tsc -p tsconfig.json &&     npx tsc -p tsconfig-cjs.json
+#16 CACHED
+
+#29 [langfuse-worker kysely-builder 8/8] RUN rm -rf node_modules test site example docs .github
+#29 CACHED
+
+#30 [langfuse-web pruner 2/7] COPY . .
+#30 DONE 8.3s
+
+#31 [langfuse-web pruner 3/7] RUN rm -rf packages/kysely
+#31 DONE 5.6s
+
+#32 [langfuse-web pruner 4/7] COPY --from=kysely-builder /kysely ./packages/kysely
+#32 DONE 4.2s
+
+#33 [langfuse-web pruner 5/7] RUN node -e "try {       JSON.parse(require('fs').readFileSync('./packages/kysely/package.json', 'utf8'));       console.log('✅ kysely package.json is valid');     } catch(e) {       console.error('❌ Invalid kysely package.json:', e.message);       process.exit(1);     }"
+#33 3.164 ✅ kysely package.json is valid
+#33 DONE 3.2s
+
+#34 [langfuse-worker pruner 6/7] RUN pnpm install --lockfile-only || true
+#34 4.402 web                                      |  WARN  The field "pnpm" was found in /app/web/package.json. This will not take effect. You should configure "pnpm" at the root of the workspace instead.
+#34 4.469 Scope: all 8 workspace projects
+#34 4.530 (node:7) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+#34 4.530 (Use `node --trace-deprecation ...` to show where the warning was created)
+#34 5.168 Progress: resolved 1, reused 0, downloaded 0, added 0
+#34 5.253
+#34 5.253    ╭───────────────────────────────────────────────────────────────────╮
+#34 5.253    │                                                                   │
+#34 5.253    │                Update available! 9.5.0 → 10.27.0.                 │
+#34 5.253    │   Changelog: https://github.com/pnpm/pnpm/releases/tag/v10.27.0   │
+#34 5.253    │         Run "corepack install -g pnpm@10.27.0" to update.         │
+#34 5.253    │                                                                   │
+#34 5.253    │         Follow @pnpmjs for updates: https://x.com/pnpmjs          │
+#34 5.253    │                                                                   │
+#34 5.253    ╰───────────────────────────────────────────────────────────────────╯
+#34 5.253
+#34 5.503 ee                                       |  WARN  deprecated eslint@8.57.1
+#34 6.191 Progress: resolved 34, reused 0, downloaded 0, added 0
+#34 7.230 Progress: resolved 65, reused 0, downloaded 0, added 0
+#34 7.623 web                                      |  WARN  deprecated @types/dompurify@3.2.0
+#34 8.255 Progress: resolved 99, reused 0, downloaded 0, added 0
+#34 9.264 Progress: resolved 135, reused 0, downloaded 0, added 0
+#34 10.27 Progress: resolved 189, reused 0, downloaded 0, added 0
+#34 11.62 Progress: resolved 199, reused 0, downloaded 0, added 0
+#34 12.71 Progress: resolved 228, reused 0, downloaded 0, added 0
+#34 13.72 Progress: resolved 246, reused 0, downloaded 0, added 0
+#34 13.73 packages/kysely                          |  WARN  deprecated chai-subset@1.6.0
+#34 15.24 Progress: resolved 270, reused 0, downloaded 0, added 0
+#34 16.57 Progress: resolved 328, reused 0, downloaded 0, added 0
+#34 17.57 Progress: resolved 352, reused 0, downloaded 0, added 0
+#34 18.60 Progress: resolved 385, reused 0, downloaded 0, added 0
+#34 19.60 Progress: resolved 436, reused 0, downloaded 0, added 0
+#34 20.61 Progress: resolved 538, reused 0, downloaded 0, added 0
+#34 21.61 Progress: resolved 587, reused 0, downloaded 0, added 0
+#34 22.76 Progress: resolved 629, reused 0, downloaded 0, added 0
+#34 23.76 Progress: resolved 710, reused 0, downloaded 0, added 0
+#34 24.80 Progress: resolved 730, reused 0, downloaded 0, added 0
+#34 25.80 Progress: resolved 804, reused 0, downloaded 0, added 0
+#34 26.80 Progress: resolved 956, reused 0, downloaded 0, added 0
+#34 27.85 Progress: resolved 1132, reused 0, downloaded 0, added 0
+#34 28.85 Progress: resolved 1281, reused 0, downloaded 0, added 0
+#34 29.91 Progress: resolved 1386, reused 0, downloaded 0, added 0
+#34 31.01 Progress: resolved 1467, reused 0, downloaded 0, added 0
+#34 32.01 Progress: resolved 1504, reused 0, downloaded 0, added 0
+#34 33.04 Progress: resolved 1558, reused 0, downloaded 0, added 0
+#34 34.03 Progress: resolved 1614, reused 0, downloaded 0, added 0
+#34 35.05 Progress: resolved 1761, reused 0, downloaded 0, added 0
+#34 36.05 Progress: resolved 1837, reused 0, downloaded 0, added 0
+#34 37.07 Progress: resolved 2031, reused 0, downloaded 0, added 0
+#34 38.08 Progress: resolved 2233, reused 0, downloaded 0, added 0
+#34 39.08 Progress: resolved 2499, reused 0, downloaded 0, added 0
+#34 39.34 packages/shared                          |  WARN  deprecated puppeteer@23.11.1
+#34 40.08 Progress: resolved 2545, reused 0, downloaded 0, added 0
+#34 41.33  WARN  11 deprecated subdependencies found: @humanwhocodes/config-array@0.13.0, @humanwhocodes/object-schema@2.0.3, @types/parse-path@7.1.0, abab@2.0.6, domexception@4.0.0, json-schema-ref-parser@6.1.0, lodash.get@4.4.2, node-domexception@1.0.0, rimraf@3.0.2, whatwg-encoding@2.0.0, whatwg-encoding@3.1.1
+#34 41.63 Progress: resolved 2591, reused 0, downloaded 0, added 0
+#34 41.75 Progress: resolved 2591, reused 0, downloaded 0, added 0, done
+#34 41.76
+#34 41.77  WARN  Issues with peer dependencies found
+#34 41.77 .
+#34 41.77 └─┬ prisma 7.2.0
+#34 41.77   └─┬ @prisma/studio-core 0.9.0
+#34 41.77     ├── ✕ missing peer react@"^18.0.0 || ^19.0.0"
+#34 41.77     ├── ✕ missing peer react-dom@"^18.0.0 || ^19.0.0"
+#34 41.77     └── ✕ missing peer @types/react@"^18.0.0 || ^19.0.0"
+#34 41.77 Peer dependencies that should be installed:
+#34 41.77   @types/react@"^18.0.0 || ^19.0.0"
+#34 41.77   react-dom@"^18.0.0 || ^19.0.0"
+#34 41.77   react@"^18.0.0 || ^19.0.0"
+#34 41.77
+#34 41.77 packages/shared
+#34 41.77 └─┬ prisma-extension-kysely 3.0.0
+#34 41.77   └── ✕ unmet peer @prisma/client@latest: found 7.2.0
+#34 41.77
+#34 41.77 web
+#34 41.77 ├─┬ @typescript-eslint/eslint-plugin 6.21.0
+#34 41.77 │ └── ✕ unmet peer @typescript-eslint/parser@"^6.0.0 || ^6.0.0-alpha": found 7.18.0
+#34 41.77 ├─┬ eslint-config-next 15.5.9
+#34 41.77 │ └─┬ @typescript-eslint/eslint-plugin 6.21.0
+#34 41.77 │   └── ✕ unmet peer @typescript-eslint/parser@"^6.0.0 || ^6.0.0-alpha": found 7.18.0 in eslint-config-next
+#34 41.77 ├─┬ @testing-library/react 15.0.7
+#34 41.77 │ ├── ✕ unmet peer @types/react@^18.0.0: found 19.2.2
+#34 41.77 │ ├── ✕ unmet peer react@^18.0.0: found 19.2.0
+#34 41.77 │ ├── ✕ unmet peer react-dom@^18.0.0: found 19.2.0
+#34 41.77 │ └─┬ @types/react-dom 18.3.7
+#34 41.77 │   └── ✕ unmet peer @types/react@^18.0.0: found 19.2.2
+#34 41.77 └─┬ @tremor/react 4.0.0-beta-tremor-v4.4
+#34 41.77   └─┬ react-day-picker 8.10.1
+#34 41.77     └── ✕ unmet peer react@"^16.8.0 || ^17.0.0 || ^18.0.0": found 19.2.0
+#34 41.77
+#34 41.77 worker
+#34 41.77 └─┬ prisma 7.2.0
+#34 41.77   └─┬ @prisma/studio-core 0.9.0
+#34 41.77     ├── ✕ missing peer react@"^18.0.0 || ^19.0.0"
+#34 41.77     ├── ✕ missing peer react-dom@"^18.0.0 || ^19.0.0"
+#34 41.77     └── ✕ missing peer @types/react@"^18.0.0 || ^19.0.0"
+#34 41.77 Peer dependencies that should be installed:
+#34 41.77   @types/react@"^18.0.0 || ^19.0.0"
+#34 41.77   react-dom@"^18.0.0 || ^19.0.0"
+#34 41.77   react@"^18.0.0 || ^19.0.0"
+#34 41.77
+#34 41.77 Done in 38.2s
+#34 DONE 42.5s
+
+#35 [langfuse-web pruner 4/7] COPY --from=kysely-builder /kysely ./packages/kysely
+#35 CACHED
+
+#36 [langfuse-web pruner 5/7] RUN node -e "try {       JSON.parse(require('fs').readFileSync('./packages/kysely/package.json', 'utf8'));       console.log('✅ kysely package.json is valid');     } catch(e) {       console.error('❌ Invalid kysely package.json:', e.message);       process.exit(1);     }"
+#36 CACHED
+
+#37 [langfuse-web pruner 6/7] RUN pnpm install --lockfile-only || true
+#37 CACHED
+
+#38 [langfuse-web pruner 7/7] RUN turbo prune --scope=web --docker
+#38 ...
+
+#39 [langfuse-worker pruner 7/7] RUN turbo prune --scope=worker --docker ||     (echo "❌ Turbo prune failed. Debugging info:" &&      echo "=== turbo.json ===" && cat turbo.json &&      echo "=== worker/package.json ===" && cat worker/package.json &&      exit 1)
+#39 14.09  WARNING  No locally installed `turbo` found in your repository. Using globally installed version (2.7.2), which can cause unexpected behavior.
+#39 14.09
+#39 14.09 Installing the version in your repository (^2.7.1) before calling `turbo` will result in more predictable behavior across environments.
+#39 14.14
+#39 14.14 Attention:
+#39 14.14 Turborepo now collects completely anonymous telemetry regarding usage.
+#39 14.14 This information is used to shape the Turborepo roadmap and prioritize features.
+#39 14.14 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#39 14.14 https://turborepo.com/docs/telemetry
+#39 14.14
+#39 14.14 • turbo 2.7.2
+#39 ...
+
+#38 [langfuse-web pruner 7/7] RUN turbo prune --scope=web --docker
+#38 14.14  WARNING  No locally installed `turbo` found in your repository. Using globally installed version (2.7.2), which can cause unexpected behavior.
+#38 14.14
+#38 14.14 Installing the version in your repository (^2.7.1) before calling `turbo` will result in more predictable behavior across environments.
+#38 14.18
+#38 14.18 Attention:
+#38 14.18 Turborepo now collects completely anonymous telemetry regarding usage.
+#38 14.18 This information is used to shape the Turborepo roadmap and prioritize features.
+#38 14.18 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#38 14.18 https://turborepo.com/docs/telemetry
+#38 14.18
+#38 14.18 • turbo 2.7.2
+#38 14.56 Generating pruned monorepo for web in /app/out
+#38 14.57  - Added @langfuse/ee
+#38 15.05  - Added @langfuse/shared
+#38 15.06  - Added @repo/eslint-config
+#38 15.06  - Added @repo/typescript-config
+#38 15.45  - Added kysely
+#38 16.00  - Added web
+#38 ...
+
+#39 [langfuse-worker pruner 7/7] RUN turbo prune --scope=worker --docker ||     (echo "❌ Turbo prune failed. Debugging info:" &&      echo "=== turbo.json ===" && cat turbo.json &&      echo "=== worker/package.json ===" && cat worker/package.json &&      exit 1)
+#39 14.61 Generating pruned monorepo for worker in /app/out
+#39 15.08  - Added @langfuse/shared
+#39 15.08  - Added @repo/eslint-config
+#39 15.08  - Added @repo/typescript-config
+#39 15.55  - Added kysely
+#39 15.69  - Added worker
+#39 DONE 25.1s
+
+#38 [langfuse-web pruner 7/7] RUN turbo prune --scope=web --docker
+#38 DONE 25.1s
+
+#40 [langfuse-web builder  4/12] COPY --from=pruner /app/out/json/ .
+#40 CACHED
+
+#41 [langfuse-web builder  5/12] RUN sed -i 's/"preinstall": ".*"/"preinstall": "true"/' package.json
+#41 DONE 6.4s
+
+#42 [langfuse-web builder  6/12] RUN pnpm install --no-frozen-lockfile
+#42 5.700 web                                      |  WARN  The field "pnpm" was found in /app/web/package.json. This will not take effect. You should configure "pnpm" at the root of the workspace instead.
+#42 5.789 Scope: all 7 workspace projects
+#42 5.863 (node:1) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+#42 5.863 (Use `node --trace-deprecation ...` to show where the warning was created)
+#42 6.265 Lockfile is up to date, resolution step is skipped
+#42 6.615 Progress: resolved 1, reused 0, downloaded 0, added 0
+#42 7.454 Packages: +2480
+#42 7.454 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#42 7.793 Progress: resolved 2480, reused 0, downloaded 0, added 0
+#42 10.79
+#42 10.79    ╭───────────────────────────────────────────────────────────────────╮
+#42 10.79    │                                                                   │
+#42 10.79    │                Update available! 9.5.0 → 10.27.0.                 │
+#42 10.79    │   Changelog: https://github.com/pnpm/pnpm/releases/tag/v10.27.0   │
+#42 10.79    │         Run "corepack install -g pnpm@10.27.0" to update.         │
+#42 10.79    │                                                                   │
+#42 10.79    │         Follow @pnpmjs for updates: https://x.com/pnpmjs          │
+#42 10.79    │                                                                   │
+#42 10.79    ╰───────────────────────────────────────────────────────────────────╯
+#42 10.79
+#42 11.20 Progress: resolved 2480, reused 0, downloaded 1, added 0
+#42 12.29 Progress: resolved 2480, reused 0, downloaded 13, added 0
+#42 13.30 Progress: resolved 2480, reused 0, downloaded 15, added 4
+#42 14.33 Progress: resolved 2480, reused 0, downloaded 20, added 10
+#42 15.33 Progress: resolved 2480, reused 0, downloaded 25, added 13
+#42 16.47 Progress: resolved 2480, reused 0, downloaded 28, added 17
+#42 17.47 Progress: resolved 2480, reused 0, downloaded 31, added 22
+#42 18.55 Progress: resolved 2480, reused 0, downloaded 35, added 26
+#42 19.55 Progress: resolved 2480, reused 0, downloaded 47, added 35
+#42 20.55 Progress: resolved 2480, reused 0, downloaded 50, added 40
+#42 21.57 Progress: resolved 2480, reused 0, downloaded 84, added 79
+#42 22.58 Progress: resolved 2480, reused 0, downloaded 139, added 131
+#42 23.60 Progress: resolved 2480, reused 0, downloaded 197, added 185
+#42 24.60 Progress: resolved 2480, reused 0, downloaded 268, added 265
+#42 25.61 Progress: resolved 2480, reused 0, downloaded 340, added 336
+#42 26.62 Progress: resolved 2480, reused 0, downloaded 385, added 378
+#42 27.62 Progress: resolved 2480, reused 0, downloaded 482, added 485
+#42 28.64 Progress: resolved 2480, reused 0, downloaded 582, added 582
+#42 29.66 Progress: resolved 2480, reused 0, downloaded 643, added 642
+#42 30.66 Progress: resolved 2480, reused 0, downloaded 683, added 680
+#42 31.70 Progress: resolved 2480, reused 0, downloaded 737, added 738
+#42 32.69 Progress: resolved 2480, reused 0, downloaded 788, added 786
+#42 33.70 Progress: resolved 2480, reused 0, downloaded 810, added 805
+#42 34.70 Progress: resolved 2480, reused 0, downloaded 828, added 822
+#42 35.71 Progress: resolved 2480, reused 0, downloaded 865, added 861
+#42 36.72 Progress: resolved 2480, reused 0, downloaded 885, added 880
+#42 37.72 Progress: resolved 2480, reused 0, downloaded 937, added 933
+#42 38.75 Progress: resolved 2480, reused 0, downloaded 990, added 986
+#42 39.75 Progress: resolved 2480, reused 0, downloaded 1022, added 1020
+#42 40.75 Progress: resolved 2480, reused 0, downloaded 1042, added 1038
+#42 41.75 Progress: resolved 2480, reused 0, downloaded 1065, added 1062
+#42 42.76 Progress: resolved 2480, reused 0, downloaded 1084, added 1086
+#42 43.76 Progress: resolved 2480, reused 0, downloaded 1114, added 1134
+#42 44.77 Progress: resolved 2480, reused 0, downloaded 1130, added 1149
+#42 45.77 Progress: resolved 2480, reused 0, downloaded 1177, added 1198
+#42 46.78 Progress: resolved 2480, reused 0, downloaded 1214, added 1232
+#42 47.83 Progress: resolved 2480, reused 0, downloaded 1240, added 1263
+#42 48.83 Progress: resolved 2480, reused 0, downloaded 1276, added 1300
+#42 49.83 Progress: resolved 2480, reused 0, downloaded 1313, added 1337
+#42 50.86 Progress: resolved 2480, reused 0, downloaded 1357, added 1381
+#42 51.99 Progress: resolved 2480, reused 0, downloaded 1382, added 1397
+#42 53.01 Progress: resolved 2480, reused 0, downloaded 1400, added 1415
+#42 54.02 Progress: resolved 2480, reused 0, downloaded 1441, added 1458
+#42 55.02 Progress: resolved 2480, reused 0, downloaded 1472, added 1487
+#42 56.03 Progress: resolved 2480, reused 0, downloaded 1490, added 1502
+#42 57.09 Progress: resolved 2480, reused 0, downloaded 1511, added 1524
+#42 58.10 Progress: resolved 2480, reused 0, downloaded 1525, added 1536
+#42 59.11 Progress: resolved 2480, reused 0, downloaded 1555, added 1566
+#42 60.12 Progress: resolved 2480, reused 0, downloaded 1632, added 1648
+#42 61.13 Progress: resolved 2480, reused 0, downloaded 1680, added 1693
+#42 62.13 Progress: resolved 2480, reused 0, downloaded 1725, added 1737
+#42 63.14 Progress: resolved 2480, reused 0, downloaded 1816, added 1833
+#42 64.14 Progress: resolved 2480, reused 0, downloaded 1854, added 1871
+#42 65.14 Progress: resolved 2480, reused 0, downloaded 1883, added 1893
+#42 66.16 Progress: resolved 2480, reused 0, downloaded 1921, added 1934
+#42 67.23 Progress: resolved 2480, reused 0, downloaded 1970, added 1985
+#42 68.23 Progress: resolved 2480, reused 0, downloaded 1987, added 2001
+#42 69.24 Progress: resolved 2480, reused 0, downloaded 1995, added 2009
+#42 70.24 Progress: resolved 2480, reused 0, downloaded 1999, added 2010
+#42 71.24 Progress: resolved 2480, reused 0, downloaded 2009, added 2020
+#42 72.35 Progress: resolved 2480, reused 0, downloaded 2009, added 2021
+#42 73.37 Progress: resolved 2480, reused 0, downloaded 2046, added 2059
+#42 74.53 Progress: resolved 2480, reused 0, downloaded 2107, added 2128
+#42 75.61 Progress: resolved 2480, reused 0, downloaded 2110, added 2134
+#42 76.90 Progress: resolved 2480, reused 0, downloaded 2115, added 2134
+#42 77.92 Progress: resolved 2480, reused 0, downloaded 2120, added 2134
+#42 78.95 Progress: resolved 2480, reused 0, downloaded 2129, added 2140
+#42 79.98 Progress: resolved 2480, reused 0, downloaded 2137, added 2148
+#42 81.03 Progress: resolved 2480, reused 0, downloaded 2138, added 2151
+#42 82.03 Progress: resolved 2480, reused 0, downloaded 2144, added 2156
+#42 83.08 Progress: resolved 2480, reused 0, downloaded 2149, added 2161
+#42 84.14 Progress: resolved 2480, reused 0, downloaded 2150, added 2162
+#42 85.44 Progress: resolved 2480, reused 0, downloaded 2154, added 2165
+#42 86.50 Progress: resolved 2480, reused 0, downloaded 2156, added 2167
+#42 87.54 Progress: resolved 2480, reused 0, downloaded 2168, added 2178
+#42 88.55 Progress: resolved 2480, reused 0, downloaded 2174, added 2190
+#42 89.57 Progress: resolved 2480, reused 0, downloaded 2191, added 2203
+#42 90.65 Progress: resolved 2480, reused 0, downloaded 2207, added 2218
+#42 91.69 Progress: resolved 2480, reused 0, downloaded 2219, added 2232
+#42 92.73 Progress: resolved 2480, reused 0, downloaded 2228, added 2239
+#42 93.77 Progress: resolved 2480, reused 0, downloaded 2249, added 2262
+#42 94.81 Progress: resolved 2480, reused 0, downloaded 2255, added 2268
+#42 95.85 Progress: resolved 2480, reused 0, downloaded 2268, added 2279
+#42 96.86 Progress: resolved 2480, reused 0, downloaded 2279, added 2291
+#42 97.87 Progress: resolved 2480, reused 0, downloaded 2299, added 2313
+#42 98.94 Progress: resolved 2480, reused 0, downloaded 2312, added 2325
+#42 99.94 Progress: resolved 2480, reused 0, downloaded 2371, added 2385
+#42 100.9 Progress: resolved 2480, reused 0, downloaded 2455, added 2480, done
+#42 102.8 .../node_modules/@prisma/engines postinstall$ node scripts/postinstall.js
+#42 102.8 .../node_modules/@prisma/engines postinstall$ node scripts/postinstall.js
+#42 102.9 .../node_modules/better-sqlite3 install$ prebuild-install || node-gyp rebuild --release
+#42 102.9 .../node_modules/unrs-resolver postinstall$ napi-postinstall unrs-resolver 1.11.1 check
+#42 102.9 .../sharp@0.34.5/node_modules/sharp install$ node install/check.js || npm run build
+#42 103.2 .../node_modules/unrs-resolver postinstall: Done
+#42 103.2 .../sharp@0.34.5/node_modules/sharp install: Done
+#42 103.3 .../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js
+#42 103.3 .../node_modules/puppeteer postinstall$ node install.mjs
+#42 103.4 .../node_modules/better-sqlite3 install: (node:28) [DEP0176] DeprecationWarning: fs.R_OK is deprecated, use fs.constants.R_OK instead
+#42 103.4 .../node_modules/better-sqlite3 install: (Use `node --trace-deprecation ...` to show where the warning was created)
+#42 103.4 .../esbuild@0.25.12/node_modules/esbuild postinstall: Done
+#42 103.6 .../node_modules/@prisma/engines postinstall: prisma:warn Prisma failed to detect the libssl/openssl version to use, and may not work as expected. Defaulting to "openssl-1.1.x".
+#42 103.6 .../node_modules/@prisma/engines postinstall: Please manually install OpenSSL and try installing Prisma again.
+#42 103.7 .../node_modules/protobufjs postinstall$ node scripts/postinstall
+#42 103.9 .../node_modules/protobufjs postinstall: Done
+#42 104.0 .../node_modules/msgpackr-extract install$ node-gyp-build-optional-packages
+#42 104.1 .../node_modules/puppeteer postinstall: **INFO** Skipping Firefox download as instructed.
+#42 104.2 .../node_modules/better-sqlite3 install: Done
+#42 104.3 .../node_modules/@datadog/native-appsec install$ exit 0
+#42 104.3 .../node_modules/@datadog/native-appsec install: Done
+#42 104.4 .../node_modules/msgpackr-extract install: Done
+#42 104.4 .../@datadog/native-iast-taint-tracking install$ exit 0
+#42 104.4 .../@datadog/native-iast-taint-tracking install: Done
+#42 104.7 .../node_modules/@datadog/native-metrics install$ exit 0
+#42 104.7 .../node_modules/@datadog/native-metrics install: Done
+#42 104.8 .../node_modules/@datadog/pprof install$ exit 0
+#42 104.8 .../node_modules/@datadog/pprof install: Done
+#42 105.1 .../node_modules/@sentry/cli postinstall$ node ./scripts/install.js
+#42 105.2 .../core-js@3.47.0/node_modules/core-js postinstall$ node -e "try{require('./postinstall')}catch(e){}"
+#42 105.2 .../core-js@3.47.0/node_modules/core-js postinstall: Thank you for using core-js ( https://github.com/zloirock/core-js ) for polyfilling JavaScript standard library!
+#42 105.2 .../core-js@3.47.0/node_modules/core-js postinstall: The project needs your help! Please consider supporting core-js:
+#42 105.3 .../core-js@3.47.0/node_modules/core-js postinstall: > https://opencollective.com/core-js
+#42 105.3 .../core-js@3.47.0/node_modules/core-js postinstall: > https://patreon.com/zloirock
+#42 105.3 .../core-js@3.47.0/node_modules/core-js postinstall: > https://boosty.to/zloirock
+#42 105.3 .../core-js@3.47.0/node_modules/core-js postinstall: > bitcoin: bc1qlea7544qtsmj2rayg0lthvza9fau63ux0fstcz
+#42 105.3 .../core-js@3.47.0/node_modules/core-js postinstall: I highly recommend reading this: https://github.com/zloirock/core-js/blob/master/docs/2023-02-14-so-whats-next.md
+#42 105.3 .../core-js@3.47.0/node_modules/core-js postinstall: Done
+#42 105.5 .../node_modules/@sentry/cli postinstall: Done
+#42 105.7 .../node_modules/@prisma/engines postinstall: Done
+#42 106.5 .../node_modules/@prisma/engines postinstall: Done
+#42 123.6 .../node_modules/puppeteer postinstall: chrome-headless-shell (131.0.6778.204) downloaded to /root/.cache/puppeteer/chrome-headless-shell/linux-131.0.6778.204
+#42 128.0 .../node_modules/puppeteer postinstall: chrome (131.0.6778.204) downloaded to /root/.cache/puppeteer/chrome/linux-131.0.6778.204
+#42 128.0 .../node_modules/puppeteer postinstall: Done
+#42 128.0 .../node_modules/dd-trace preinstall$ node scripts/preinstall.js
+#42 128.0 .../node_modules/prisma preinstall$ node scripts/preinstall-entry.js
+#42 128.1 .../node_modules/dd-trace preinstall: Done
+#42 128.1 .../node_modules/prisma preinstall$ node scripts/preinstall-entry.js
+#42 128.1 .../node_modules/prisma preinstall$ node scripts/preinstall-entry.js
+#42 128.2 .../node_modules/prisma preinstall: Done
+#42 128.2 .../node_modules/prisma preinstall: Done
+#42 128.3 .../node_modules/prisma preinstall: Done
+#42 129.7
+#42 129.7 dependencies:
+#42 129.7 + @prisma/client 7.2.0
+#42 129.7 + prisma-kysely 1.8.0
+#42 129.7
+#42 129.7 devDependencies:
+#42 129.7 + @release-it/bumper 7.0.5
+#42 129.7 + braces 3.0.3
+#42 129.7 + dotenv-cli 7.4.4
+#42 129.7 + husky 9.1.7
+#42 129.7 + prettier 3.7.4
+#42 129.7 + release-it 19.2.2
+#42 129.7 + turbo 2.7.2
+#42 129.7
+#42 129.8 . preinstall$ true
+#42 129.8 . preinstall: Done
+#42 129.8 . prepare$ husky
+#42 130.0 . prepare: .git can't be found
+#42 130.0 . prepare: Done
+#42 130.2 Done in 2m 5.9s
+#42 DONE 130.4s
+
+#43 [langfuse-worker builder  3/12] COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+#43 CACHED
+
+#44 [langfuse-worker builder  6/12] RUN pnpm install --no-frozen-lockfile
+#44 CACHED
+
+#45 [langfuse-worker builder  4/12] COPY --from=pruner /app/out/json/ .
+#45 CACHED
+
+#46 [langfuse-worker builder  7/12] COPY --from=pruner /app/out/full/ .
+#46 CACHED
+
+#47 [langfuse-worker builder  5/12] RUN sed -i 's/"preinstall": ".*"/"preinstall": "true"/' package.json
+#47 CACHED
+
+#48 [langfuse-worker builder  2/12] COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+#48 CACHED
+
+#49 [langfuse-worker builder  8/12] RUN cd packages/shared && npx prisma generate
+#49 CACHED
+
+#50 [langfuse-worker builder  9/12] RUN ls -la node_modules/.prisma/client/index.js ||     (echo "❌ Prisma Client not found" && exit 1)
+#50 ...
+
+#51 [langfuse-web builder  2/12] COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+#51 CACHED
+
+#52 [langfuse-web builder  5/12] RUN sed -i 's/"preinstall": ".*"/"preinstall": "true"/' package.json
+#52 CACHED
+
+#53 [langfuse-web builder  7/12] COPY --from=pruner /app/out/full/ .
+#53 CACHED
+
+#54 [langfuse-web builder  3/12] COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+#54 CACHED
+
+#55 [langfuse-web builder  4/12] COPY --from=pruner /app/out/json/ .
+#55 CACHED
+
+#56 [langfuse-web builder  6/12] RUN pnpm install --no-frozen-lockfile
+#56 CACHED
+
+#57 [langfuse-web builder  8/12] RUN rm -f ./web/src/middleware.ts
+#57 CACHED
+
+#58 [langfuse-web builder  9/12] RUN cd packages/shared && npx prisma generate
+#58 ...
+
+#50 [langfuse-worker builder  9/12] RUN ls -la node_modules/.prisma/client/index.js ||     (echo "❌ Prisma Client not found" && exit 1)
+#50 66.98 ls: node_modules/.prisma/client/index.js: No such file or directory
+#50 66.98 ❌ Prisma Client not found
+#50 ERROR: process "/bin/sh -c ls -la node_modules/.prisma/client/index.js ||     (echo \"❌ Prisma Client not found\" && exit 1)" did not complete successfully: exit code: 1
+
+#58 [langfuse-web builder  9/12] RUN cd packages/shared && npx prisma generate
+------
+ > [langfuse-worker builder  9/12] RUN ls -la node_modules/.prisma/client/index.js ||     (echo "❌ Prisma Client not found" && exit 1):
+66.98 ls: node_modules/.prisma/client/index.js: No such file or directory
+66.98 ❌ Prisma Client not found
+------
+Dockerfile:129
+
+--------------------
+
+ 128 |     # Verify Prisma Client was generated
+
+ 129 | >>> RUN ls -la node_modules/.prisma/client/index.js || \
+
+ 130 | >>>     (echo "❌ Prisma Client not found" && exit 1)
+
+ 131 |
+
+--------------------
+
+target langfuse-worker: failed to solve: process "/bin/sh -c ls -la node_modules/.prisma/client/index.js ||     (echo \"❌ Prisma Client not found\" && exit 1)" did not complete successfully: exit code: 1

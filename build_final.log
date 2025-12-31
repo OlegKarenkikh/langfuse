@@ -1,0 +1,307 @@
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.06kB done
+#1 DONE 0.0s
+
+#2 [langfuse-worker internal] load build definition from Dockerfile
+#2 transferring dockerfile: 5.52kB 0.0s done
+#2 DONE 0.1s
+
+#3 [langfuse-web internal] load build definition from Dockerfile
+#3 transferring dockerfile: 7.44kB 0.0s done
+#3 WARN: RedundantTargetPlatform: Setting platform to predefined ${TARGETPLATFORM:-linux/amd64} in FROM is redundant as this is the default behavior (line 4)
+#3 DONE 0.1s
+
+#4 [langfuse-worker internal] load metadata for docker.io/library/node:24-alpine
+#4 DONE 0.7s
+
+#5 [langfuse-worker internal] load .dockerignore
+#5 transferring context: 131B done
+#5 DONE 0.0s
+
+#6 [langfuse-web alpine 1/2] FROM docker.io/library/node:24-alpine@sha256:c921b97d4b74f51744057454b306b418cf693865e73b8100559189605f6955b8
+#6 DONE 0.0s
+
+#7 [langfuse-worker runner 1/6] RUN apk add --no-cache dumb-init
+#7 CACHED
+
+#8 [langfuse-worker runner 2/6] WORKDIR /app
+#8 CACHED
+
+#9 [langfuse-web pruner 1/7] WORKDIR /app
+#9 CACHED
+
+#10 [langfuse-web runner  3/16] RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 nextjs
+#10 CACHED
+
+#11 [langfuse-web runner  5/16] RUN if [ -n "" ]; then       npm install --no-package-lock --no-save dd-trace@5.81.0;     fi
+#11 CACHED
+
+#12 [langfuse-web base 1/2] RUN npm install turbo@^2.7.1 --global
+#12 CACHED
+
+#13 [langfuse-web base 2/2] RUN corepack enable &&     corepack prepare pnpm@9.5.0 --activate
+#13 CACHED
+
+#14 [langfuse-web runner  4/16] RUN npm install -g --no-package-lock --no-save prisma@7.2.0
+#14 CACHED
+
+#15 [langfuse-web runner  2/16] RUN apk add --no-cache dumb-init tzdata
+#15 CACHED
+
+#16 [langfuse-web alpine 2/2] RUN apk update &&     apk upgrade --no-cache     libcrypto3     libssl3     libc6-compat     busybox     ssl_client
+#16 CACHED
+
+#17 [langfuse-web runner  6/16] RUN MIGRATE_TARGET_ARCH=$(echo linux/amd64 | sed 's/\//-/g') &&     wget -q -O- https://github.com/golang-migrate/migrate/releases/download/v4.19.0/migrate.$MIGRATE_TARGET_ARCH.tar.gz | tar xvz &&     mv migrate /usr/bin/migrate
+#17 CACHED
+
+#18 [langfuse-worker runner 3/6] RUN addgroup --system --gid 1001 expressjs &&     adduser --system --uid 1001 expressjs
+#18 CACHED
+
+#19 [langfuse-worker internal] load build context
+#19 transferring context: 329.12kB 0.8s done
+#19 DONE 0.9s
+
+#20 [langfuse-worker kysely-builder 7/8] RUN ls -la dist/cjs/index.js dist/esm/index.js ||     (echo "❌ Kysely build failed: dist files not found" && exit 1)
+#20 CACHED
+
+#21 [langfuse-web kysely-builder 3/8] RUN git clone https://github.com/OlegKarenkikh/kysely.git . &&     git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+#21 CACHED
+
+#22 [langfuse-web kysely-builder 2/8] WORKDIR /kysely
+#22 CACHED
+
+#23 [langfuse-web kysely-builder 7/8] RUN ls -la dist/cjs/index.js dist/esm/index.js ||     (echo "❌ Kysely build failed" && exit 1)
+#23 CACHED
+
+#24 [langfuse-web kysely-builder 6/8] RUN npx tsc -p tsconfig.json &&     npx tsc -p tsconfig-cjs.json
+#24 CACHED
+
+#25 [langfuse-web kysely-builder 1/8] RUN apk add --no-cache git
+#25 CACHED
+
+#26 [langfuse-web kysely-builder 4/8] RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
+#26 CACHED
+
+#27 [langfuse-web kysely-builder 5/8] RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
+#27 CACHED
+
+#9 [langfuse-web pruner 1/7] WORKDIR /app
+#9 CACHED
+
+#28 [langfuse-web kysely-builder 8/8] RUN rm -rf node_modules test site example docs .github
+#28 CACHED
+
+#29 [langfuse-worker kysely-builder 8/8] RUN rm -rf node_modules test site example docs .github
+#29 CACHED
+
+#30 [langfuse-web pruner 2/7] COPY . .
+#30 DONE 4.8s
+
+#31 [langfuse-web pruner 3/7] RUN rm -rf packages/kysely
+#31 DONE 4.4s
+
+#32 [langfuse-web pruner 4/7] COPY --from=kysely-builder /kysely ./packages/kysely
+#32 DONE 3.4s
+
+#33 [langfuse-worker pruner 5/7] RUN node -e "try {       JSON.parse(require('fs').readFileSync('./packages/kysely/package.json', 'utf8'));       console.log('✅ kysely package.json is valid');     } catch(e) {       console.error('❌ Invalid kysely package.json:', e.message);       process.exit(1);     }"
+#33 2.438 ✅ kysely package.json is valid
+#33 DONE 2.5s
+
+#34 [langfuse-worker pruner 6/7] RUN pnpm install --lockfile-only || true
+#34 3.103 web                                      |  WARN  The field "pnpm" was found in /app/web/package.json. This will not take effect. You should configure "pnpm" at the root of the workspace instead.
+#34 3.185 Scope: all 8 workspace projects
+#34 3.309 (node:7) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+#34 3.309 (Use `node --trace-deprecation ...` to show where the warning was created)
+#34 4.445 Progress: resolved 1, reused 0, downloaded 0, added 0
+#34 4.780
+#34 4.780    ╭───────────────────────────────────────────────────────────────────╮
+#34 4.780    │                                                                   │
+#34 4.780    │                Update available! 9.5.0 → 10.27.0.                 │
+#34 4.780    │   Changelog: https://github.com/pnpm/pnpm/releases/tag/v10.27.0   │
+#34 4.780    │         Run "corepack install -g pnpm@10.27.0" to update.         │
+#34 4.780    │                                                                   │
+#34 4.780    │         Follow @pnpmjs for updates: https://x.com/pnpmjs          │
+#34 4.780    │                                                                   │
+#34 4.780    ╰───────────────────────────────────────────────────────────────────╯
+#34 4.780
+#34 4.820 ee                                       |  WARN  deprecated eslint@8.57.1
+#34 5.493 Progress: resolved 23, reused 0, downloaded 0, added 0
+#34 6.496 Progress: resolved 36, reused 0, downloaded 0, added 0
+#34 7.560 Progress: resolved 57, reused 0, downloaded 0, added 0
+#34 8.577 Progress: resolved 66, reused 0, downloaded 0, added 0
+#34 8.973 web                                      |  WARN  deprecated @types/dompurify@3.2.0
+#34 9.625 Progress: resolved 90, reused 0, downloaded 0, added 0
+#34 10.65 Progress: resolved 127, reused 0, downloaded 0, added 0
+#34 11.73 Progress: resolved 175, reused 0, downloaded 0, added 0
+#34 12.76 Progress: resolved 196, reused 0, downloaded 0, added 0
+#34 13.91 Progress: resolved 210, reused 0, downloaded 0, added 0
+#34 14.91 Progress: resolved 227, reused 0, downloaded 0, added 0
+#34 15.92 Progress: resolved 250, reused 0, downloaded 0, added 0
+#34 16.02 packages/kysely                          |  WARN  deprecated chai-subset@1.6.0
+#34 17.39 Progress: resolved 267, reused 0, downloaded 0, added 0
+#34 18.95 Progress: resolved 270, reused 0, downloaded 0, added 0
+#34 20.18 Progress: resolved 283, reused 0, downloaded 0, added 0
+#34 21.18 Progress: resolved 334, reused 0, downloaded 0, added 0
+#34 22.22 Progress: resolved 372, reused 0, downloaded 0, added 0
+#34 23.26 Progress: resolved 400, reused 0, downloaded 0, added 0
+#34 24.26 Progress: resolved 467, reused 0, downloaded 0, added 0
+#34 25.27 Progress: resolved 577, reused 0, downloaded 0, added 0
+#34 26.29 Progress: resolved 690, reused 0, downloaded 0, added 0
+#34 27.29 Progress: resolved 738, reused 0, downloaded 0, added 0
+#34 28.34 Progress: resolved 857, reused 0, downloaded 0, added 0
+#34 29.34 Progress: resolved 1010, reused 0, downloaded 0, added 0
+#34 30.34 Progress: resolved 1190, reused 0, downloaded 0, added 0
+#34 31.34 Progress: resolved 1327, reused 0, downloaded 0, added 0
+#34 32.35 Progress: resolved 1437, reused 0, downloaded 0, added 0
+#34 33.35 Progress: resolved 1496, reused 0, downloaded 0, added 0
+#34 34.56 Progress: resolved 1525, reused 0, downloaded 0, added 0
+#34 35.69 Progress: resolved 1574, reused 0, downloaded 0, added 0
+#34 36.69 Progress: resolved 1629, reused 0, downloaded 0, added 0
+#34 37.69 Progress: resolved 1888, reused 0, downloaded 0, added 0
+#34 38.69 Progress: resolved 2075, reused 0, downloaded 0, added 0
+#34 39.69 Progress: resolved 2367, reused 0, downloaded 0, added 0
+#34 40.51 packages/shared                          |  WARN  deprecated puppeteer@23.11.1
+#34 40.70 Progress: resolved 2532, reused 0, downloaded 0, added 0
+#34 42.07  WARN  11 deprecated subdependencies found: @humanwhocodes/config-array@0.13.0, @humanwhocodes/object-schema@2.0.3, @types/parse-path@7.1.0, abab@2.0.6, domexception@4.0.0, json-schema-ref-parser@6.1.0, lodash.get@4.4.2, node-domexception@1.0.0, rimraf@3.0.2, whatwg-encoding@2.0.0, whatwg-encoding@3.1.1
+#34 42.33 Progress: resolved 2591, reused 0, downloaded 0, added 0
+#34 42.34 Progress: resolved 2591, reused 0, downloaded 0, added 0, done
+#34 42.35
+#34 42.35  WARN  Issues with peer dependencies found
+#34 42.35 .
+#34 42.35 └─┬ prisma 7.2.0
+#34 42.35   └─┬ @prisma/studio-core 0.9.0
+#34 42.35     ├── ✕ missing peer react@"^18.0.0 || ^19.0.0"
+#34 42.35     ├── ✕ missing peer react-dom@"^18.0.0 || ^19.0.0"
+#34 42.35     └── ✕ missing peer @types/react@"^18.0.0 || ^19.0.0"
+#34 42.35 Peer dependencies that should be installed:
+#34 42.35   @types/react@"^18.0.0 || ^19.0.0"
+#34 42.35   react-dom@"^18.0.0 || ^19.0.0"
+#34 42.35   react@"^18.0.0 || ^19.0.0"
+#34 42.35
+#34 42.35 packages/shared
+#34 42.35 └─┬ prisma-extension-kysely 3.0.0
+#34 42.35   └── ✕ unmet peer @prisma/client@latest: found 7.2.0
+#34 42.35
+#34 42.35 web
+#34 42.35 ├─┬ @typescript-eslint/eslint-plugin 6.21.0
+#34 42.35 │ └── ✕ unmet peer @typescript-eslint/parser@"^6.0.0 || ^6.0.0-alpha": found 7.18.0
+#34 42.35 ├─┬ eslint-config-next 15.5.9
+#34 42.35 │ └─┬ @typescript-eslint/eslint-plugin 6.21.0
+#34 42.35 │   └── ✕ unmet peer @typescript-eslint/parser@"^6.0.0 || ^6.0.0-alpha": found 7.18.0 in eslint-config-next
+#34 42.35 ├─┬ @testing-library/react 15.0.7
+#34 42.35 │ ├── ✕ unmet peer @types/react@^18.0.0: found 19.2.2
+#34 42.35 │ ├── ✕ unmet peer react@^18.0.0: found 19.2.0
+#34 42.35 │ ├── ✕ unmet peer react-dom@^18.0.0: found 19.2.0
+#34 42.35 │ └─┬ @types/react-dom 18.3.7
+#34 42.35 │   └── ✕ unmet peer @types/react@^18.0.0: found 19.2.2
+#34 42.35 └─┬ @tremor/react 4.0.0-beta-tremor-v4.4
+#34 42.35   └─┬ react-day-picker 8.10.1
+#34 42.35     └── ✕ unmet peer react@"^16.8.0 || ^17.0.0 || ^18.0.0": found 19.2.0
+#34 42.35
+#34 42.35 worker
+#34 42.35 └─┬ prisma 7.2.0
+#34 42.35   └─┬ @prisma/studio-core 0.9.0
+#34 42.35     ├── ✕ missing peer react@"^18.0.0 || ^19.0.0"
+#34 42.35     ├── ✕ missing peer react-dom@"^18.0.0 || ^19.0.0"
+#34 42.35     └── ✕ missing peer @types/react@"^18.0.0 || ^19.0.0"
+#34 42.35 Peer dependencies that should be installed:
+#34 42.35   @types/react@"^18.0.0 || ^19.0.0"
+#34 42.35   react-dom@"^18.0.0 || ^19.0.0"
+#34 42.35   react@"^18.0.0 || ^19.0.0"
+#34 42.35
+#34 42.36 Done in 40.3s
+#34 DONE 42.5s
+
+#35 [langfuse-web pruner 5/7] RUN node -e "try {       JSON.parse(require('fs').readFileSync('./packages/kysely/package.json', 'utf8'));       console.log('✅ kysely package.json is valid');     } catch(e) {       console.error('❌ Invalid kysely package.json:', e.message);       process.exit(1);     }"
+#35 CACHED
+
+#36 [langfuse-web pruner 6/7] RUN pnpm install --lockfile-only || true
+#36 CACHED
+
+#37 [langfuse-web pruner 4/7] COPY --from=kysely-builder /kysely ./packages/kysely
+#37 CACHED
+
+#38 [langfuse-web pruner 7/7] RUN turbo prune --scope=web --docker
+#38 5.365  WARNING  No locally installed `turbo` found in your repository. Using globally installed version (2.7.2), which can cause unexpected behavior.
+#38 5.365
+#38 5.365 Installing the version in your repository (^2.7.1) before calling `turbo` will result in more predictable behavior across environments.
+#38 5.376
+#38 5.376 Attention:
+#38 5.376 Turborepo now collects completely anonymous telemetry regarding usage.
+#38 5.376 This information is used to shape the Turborepo roadmap and prioritize features.
+#38 5.376 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#38 5.376 https://turborepo.com/docs/telemetry
+#38 5.376
+#38 5.377 • turbo 2.7.2
+#38 5.686 Generating pruned monorepo for web in /app/out
+#38 5.697  - Added @langfuse/ee
+#38 5.798  - Added @langfuse/shared
+#38 5.800  - Added @repo/eslint-config
+#38 5.802  - Added @repo/typescript-config
+#38 5.971  - Added kysely
+#38 6.087  - Added web
+#38 ...
+
+#39 [langfuse-worker pruner 7/7] RUN turbo prune --scope=worker --docker ||     (echo "❌ Turbo prune failed. Debugging info:" &&      echo "=== turbo.json ===" && cat turbo.json &&      echo "=== worker/package.json ===" && cat worker/package.json &&      exit 1)
+#39 5.366  WARNING  No locally installed `turbo` found in your repository. Using globally installed version (2.7.2), which can cause unexpected behavior.
+#39 5.366
+#39 5.366 Installing the version in your repository (^2.7.1) before calling `turbo` will result in more predictable behavior across environments.
+#39 5.376
+#39 5.376 Attention:
+#39 5.376 Turborepo now collects completely anonymous telemetry regarding usage.
+#39 5.376 This information is used to shape the Turborepo roadmap and prioritize features.
+#39 5.376 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#39 5.376 https://turborepo.com/docs/telemetry
+#39 5.376
+#39 5.376 • turbo 2.7.2
+#39 5.610 Generating pruned monorepo for worker in /app/out
+#39 5.704  - Added @langfuse/shared
+#39 5.706  - Added @repo/eslint-config
+#39 5.711  - Added @repo/typescript-config
+#39 5.823  - Added kysely
+#39 5.849  - Added worker
+#39 DONE 6.3s
+
+#38 [langfuse-web pruner 7/7] RUN turbo prune --scope=web --docker
+#38 DONE 6.6s
+
+#40 [langfuse-worker builder  2/11] COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+#40 CACHED
+
+#41 [langfuse-worker builder  4/11] COPY --from=pruner /app/out/json/ .
+#41 CACHED
+
+#42 [langfuse-worker builder  3/11] COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+#42 CACHED
+
+#43 [langfuse-worker builder  5/11] RUN sed -i 's/"preinstall": ".*"/"preinstall": "true"/' package.json
+#43 CACHED
+
+#44 [langfuse-worker builder  6/11] RUN pnpm install --no-frozen-lockfile
+#44 CACHED
+
+#45 [langfuse-worker builder  7/11] COPY --from=pruner /app/out/full/ .
+#45 ...
+
+#46 [langfuse-web builder  4/12] COPY --from=pruner /app/out/json/ .
+#46 CACHED
+
+#47 [langfuse-web builder  7/12] COPY --from=pruner /app/out/full/ .
+#47 CACHED
+
+#48 [langfuse-web builder  5/12] RUN sed -i 's/"preinstall": ".*"/"preinstall": "true"/' package.json
+#48 CACHED
+
+#49 [langfuse-web builder  6/12] RUN pnpm install --no-frozen-lockfile
+#49 CACHED
+
+#50 [langfuse-web builder  2/12] COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+#50 CACHED
+
+#51 [langfuse-web builder  3/12] COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+#51 CACHED
+
+#52 [langfuse-web builder  8/12] RUN rm -f ./web/src/middleware.ts
+#52 CACHED
+
+#53 [langfuse-web builder  9/12] RUN npx prisma generate --schema=packages/shared/prisma/schema.prisma
