@@ -53,6 +53,23 @@ error TS2344: Type 'unknown' does not satisfy the constraint 'DefaultBodyType'.
 
 Решение: Обновлена типизация функции `CompletionHandler` в `worker/src/__tests__/network.ts` - добавлен тип аргумента для `HttpResponse`: `HttpResponse<any>`. Использование `any` вместо `unknown` необходимо, так как `unknown` не удовлетворяет constraint `DefaultBodyType` в MSW. Это соответствует требованиям новой версии MSW, где `HttpResponse` требует указания типа body, совместимого с `DefaultBodyType`.
 
+### 8. Добавлены недостающие зависимости для MUI и react-resizable
+
+Проблема: Ошибки при сборке Next.js web приложения:
+```
+Module not found: Can't resolve '@emotion/react'
+Module not found: Can't resolve '@emotion/styled'
+Module not found: Can't resolve 'react-resizable/css/styles.css'
+Module not found: Can't resolve '.prisma/client/index-browser'
+```
+
+Решение: 
+- Добавлены зависимости `@emotion/react` и `@emotion/styled` в `web/package.json` (требуются для MUI v7)
+- Добавлена зависимость `react-resizable` в `web/package.json` (используется в `DashboardGrid.tsx`)
+- Добавлена webpack конфигурация в `web/next.config.mjs` для правильного разрешения Prisma Client в pnpm workspace:
+  - Добавлены `@prisma/client` и `.prisma/client` в `serverExternalPackages`
+  - Добавлена логика в `webpack` для исключения Prisma Client из клиентского бандла и правильного разрешения на сервере
+
 ### 7. Оптимизирована память для сборки Next.js web приложения
 
 Проблема: Ошибка нехватки памяти при сборке web приложения:
@@ -60,7 +77,9 @@ error TS2344: Type 'unknown' does not satisfy the constraint 'DefaultBodyType'.
 ResourceExhausted: cannot allocate memory
 ```
 
-Решение: Настройка памяти в `web/Dockerfile` изменена на абсолютное значение (`--max-old-space-size=4096` - 4GB) с дополнительной оптимизацией сборки мусора (`--gc-interval=100`). Это обеспечивает более надежную сборку Next.js приложений при ограниченных ресурсах памяти.
+Решение: Настройка памяти в `web/Dockerfile` изменена на абсолютное значение (`--max-old-space-size=4096` - 4GB). Это обеспечивает более надежную сборку Next.js приложений при ограниченных ресурсах памяти.
+
+**Примечание:** Опция `--gc-interval=100` была удалена, так как она не поддерживается в `NODE_OPTIONS`.
 
 **Важно:** Для успешной сборки web приложения требуется:
 - Минимум 8GB доступной RAM на хосте
@@ -149,7 +168,7 @@ docker build -f web/Dockerfile -t olegkarenkikh/langfuse_langfuse-web:4 --build-
 ### Проблема: Ошибка "cannot allocate memory" при сборке web приложения
 
 **Решение:**
-- ✅ **ИСПРАВЛЕНО**: Установлен лимит памяти для Node.js на 4GB с оптимизацией сборки мусора
+- ✅ **ИСПРАВЛЕНО**: Установлен лимит памяти для Node.js на 4GB
 - **Критически важно:** Убедитесь, что Docker имеет достаточно памяти:
   1. Откройте Docker Desktop → Settings → Resources → Memory
   2. Установите минимум 6GB (рекомендуется 8GB+)
@@ -159,6 +178,18 @@ docker build -f web/Dockerfile -t olegkarenkikh/langfuse_langfuse-web:4 --build-
   - Закройте другие приложения, освобождая память
   - Используйте более мощную машину для сборки (рекомендуется 16GB+ RAM)
   - Рассмотрите возможность сборки на удаленной машине или CI/CD с большим объемом памяти
+
+### Проблема: Ошибки "Module not found" для @emotion, react-resizable или Prisma Client
+
+**Решение:**
+- ✅ **ИСПРАВЛЕНО**: Добавлены недостающие зависимости в `web/package.json`:
+  - `@emotion/react` и `@emotion/styled` (для MUI)
+  - `react-resizable` (для DashboardGrid)
+- ✅ **ИСПРАВЛЕНО**: Добавлена webpack конфигурация для Prisma Client в `web/next.config.mjs`
+- Если проблема повторяется:
+  - Убедитесь, что все зависимости установлены: `pnpm install` в корне проекта
+  - Проверьте, что Prisma Client генерируется корректно: `cd packages/shared && npx prisma generate`
+  - Очистите кэш Docker: `docker builder prune`
 
 ### Проблема: Ошибка "failed to receive status: rpc error" при экспорте образа
 

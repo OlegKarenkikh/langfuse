@@ -144,11 +144,21 @@ ENV CI=true
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 
 # Generate Prisma Client for web
+# Generate after install to ensure all dependencies are available
 RUN cd packages/shared && npx prisma generate
 
+# Verify Prisma Client was generated
+RUN if find node_modules -name ".prisma" -type d 2>/dev/null | head -1 | grep -q .; then \
+        echo "✅ Prisma Client generated successfully"; \
+    else \
+        echo "⚠️ Prisma Client verification: .prisma directory not found" && \
+        echo "Checking node_modules structure..." && \
+        find node_modules -name ".prisma" -type d 2>/dev/null | head -5 || true; \
+    fi
+
 # Build web application with optimized memory settings
-# Use 1.5GB memory limit to prevent OOM on small instances
-RUN NODE_OPTIONS='--max-old-space-size=1536' \
+# Use 4GB memory limit for better compatibility with limited resources
+RUN NODE_OPTIONS='--max-old-space-size=4096' \
     turbo run build --filter=web...
 
 # Verify Next.js standalone output
