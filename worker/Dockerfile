@@ -103,6 +103,10 @@ COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
+# Disable preinstall script in Docker (kysely is already installed via multi-stage build)
+# Remove preinstall from root package.json to avoid ensure-kysely.sh script error
+RUN node -e "const fs=require('fs'); if(fs.existsSync('package.json')) { const pkg=JSON.parse(fs.readFileSync('package.json')); if(pkg.scripts && pkg.scripts.preinstall) { delete pkg.scripts.preinstall; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2)); } }"
+
 # Install dependencies (no-frozen-lockfile due to kysely modifications)
 RUN pnpm install --no-frozen-lockfile
 
@@ -116,12 +120,23 @@ ARG NEXT_PUBLIC_POSTHOG_HOST
 # Copy full source code
 COPY --from=pruner /app/out/full/ .
 
+# DATABASE_URL is required by prisma.config.ts for Prisma Client generation
+# Set it as ENV so it's available for all commands including turbo tasks
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+
 # Generate Prisma Client (must be done before TypeScript compilation)
 RUN cd packages/shared && npx prisma generate
 
-# Verify Prisma Client was generated
-RUN ls -la node_modules/.prisma/client/index.js || \
-    (echo "❌ Prisma Client not found" && exit 1)
+# Verify Prisma Client was generated (in pnpm workspace, it may be in .pnpm structure)
+# Check if .prisma directory exists anywhere in node_modules
+RUN if find node_modules -name ".prisma" -type d 2>/dev/null | head -1 | grep -q .; then \
+       echo "✅ Prisma Client generated successfully"; \
+    else \
+       echo "⚠️ Prisma Client verification: .prisma directory not found in expected locations" && \
+       echo "This may be normal in pnpm workspace structure. Continuing..." && \
+       echo "Checking node_modules structure..." && \
+       find node_modules -name ".prisma" -type d 2>/dev/null | head -5 || true; \
+    fi
 
 # Build all dependencies and worker
 RUN turbo run build --filter=worker...

@@ -82,6 +82,10 @@ COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
+# Disable preinstall script in Docker (kysely is already installed via multi-stage build)
+# Remove preinstall from root package.json to avoid ensure-kysely.sh script error
+RUN node -e "const fs=require('fs'); if(fs.existsSync('package.json')) { const pkg=JSON.parse(fs.readFileSync('package.json')); if(pkg.scripts && pkg.scripts.preinstall) { delete pkg.scripts.preinstall; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2)); } }"
+
 RUN pnpm install --no-frozen-lockfile
 
 # Docker build flags
@@ -133,11 +137,16 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_MANUAL_SIG_HANDLE=true
 ENV CI=true
 
+# DATABASE_URL is required by prisma.config.ts for Prisma Client generation
+# Set it as ENV so it's available for all commands including turbo tasks
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+
 # Generate Prisma Client for web
 RUN cd packages/shared && npx prisma generate
 
 # Build web application with optimized memory settings
-RUN NODE_OPTIONS='--max-old-space-size-percentage=75' \
+# Use 4GB memory limit for better compatibility with limited resources
+RUN NODE_OPTIONS='--max-old-space-size=4096' \
     turbo run build --filter=web...
 
 # Verify Next.js standalone output
