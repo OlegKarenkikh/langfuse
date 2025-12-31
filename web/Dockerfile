@@ -177,12 +177,12 @@ RUN addgroup --system --gid ${GID} nodejs && \
     adduser --system --uid ${UID} nextjs
 
 # Install Prisma CLI for migrations
-RUN npm install -g --no-package-lock --no-save prisma@6.17.1
+RUN npm install -g --no-package-lock --no-save prisma@7.2.0
 
 # Install dd-trace only for Cloud deployments
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 RUN if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
-      npm install --no-package-lock --no-save dd-trace@5.65.0; \
+      npm install --no-package-lock --no-save dd-trace@5.81.0; \
     fi
 
 # Install migrate tool for database migrations
