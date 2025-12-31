@@ -86,6 +86,8 @@ COPY --from=pruner /app/out/json/ .
 # Remove preinstall from root package.json to avoid ensure-kysely.sh script error
 RUN node -e "const fs=require('fs'); if(fs.existsSync('package.json')) { const pkg=JSON.parse(fs.readFileSync('package.json')); if(pkg.scripts && pkg.scripts.preinstall) { delete pkg.scripts.preinstall; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2)); } }"
 
+# Limit concurrency to prevent OOM during install
+ENV PNPM_CONFIG_NETWORK_CONCURRENCY=3
 RUN pnpm install --no-frozen-lockfile
 
 # Docker build flags
@@ -145,8 +147,8 @@ ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN cd packages/shared && npx prisma generate
 
 # Build web application with optimized memory settings
-# Use 4GB memory limit for better compatibility with limited resources
-RUN NODE_OPTIONS='--max-old-space-size=4096' \
+# Use 1.5GB memory limit to prevent OOM on small instances
+RUN NODE_OPTIONS='--max-old-space-size=1536' \
     turbo run build --filter=web...
 
 # Verify Next.js standalone output
