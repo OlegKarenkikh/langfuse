@@ -103,6 +103,9 @@ COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
+# Disable preinstall script to avoid running ensure-kysely.sh which requires scripts/ folder
+RUN sed -i 's/"preinstall": ".*"/"preinstall": "true"/' package.json
+
 # Install dependencies (no-frozen-lockfile due to kysely modifications)
 RUN pnpm install --no-frozen-lockfile
 
@@ -116,12 +119,11 @@ ARG NEXT_PUBLIC_POSTHOG_HOST
 # Copy full source code
 COPY --from=pruner /app/out/full/ .
 
-# Generate Prisma Client (must be done before TypeScript compilation)
-RUN cd packages/shared && npx prisma generate
+# Dummy environment variables for build
+ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
 
-# Verify Prisma Client was generated
-RUN ls -la node_modules/.prisma/client/index.js || \
-    (echo "❌ Prisma Client not found" && exit 1)
+# Generate Prisma Client (must be done before TypeScript compilation)
+RUN npx prisma generate --schema=packages/shared/prisma/schema.prisma
 
 # Build all dependencies and worker
 RUN turbo run build --filter=worker...

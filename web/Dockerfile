@@ -82,6 +82,9 @@ COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
+# Disable preinstall script to avoid running ensure-kysely.sh which requires scripts/ folder
+RUN sed -i 's/"preinstall": ".*"/"preinstall": "true"/' package.json
+
 RUN pnpm install --no-frozen-lockfile
 
 # Docker build flags
@@ -133,8 +136,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_MANUAL_SIG_HANDLE=true
 ENV CI=true
 
+# Dummy environment variables for build
+ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
+ENV NEXTAUTH_SECRET="dummy"
+ENV NEXTAUTH_URL="http://localhost:3000"
+ENV SALT="dummy"
+
 # Generate Prisma Client for web
-RUN cd packages/shared && npx prisma generate
+RUN npx prisma generate --schema=packages/shared/prisma/schema.prisma
 
 # Build web application with optimized memory settings
 RUN NODE_OPTIONS='--max-old-space-size-percentage=75' \
