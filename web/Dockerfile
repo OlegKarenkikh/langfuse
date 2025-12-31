@@ -1,81 +1,94 @@
-FROM public.ecr.aws/docker/library/node:22-alpine AS kysely-builder
-RUN apk update && apk add --no-cache git
+# ============================================
+# Stage 1: Alpine Base with Security Updates
+# ============================================
+FROM --platform=${TARGETPLATFORM:-linux/amd64} node:24-alpine AS alpine
+
+RUN apk update && \
+    apk upgrade --no-cache \
+    libcrypto3 \
+    libssl3 \
+    libc6-compat \
+    busybox \
+    ssl_client
+
+# ============================================
+# Stage 2: Build Custom Kysely (CVE-free fork)
+# ============================================
+FROM alpine AS kysely-builder
+
+RUN apk add --no-cache git
+
 WORKDIR /kysely
+
 RUN git clone https://github.com/OlegKarenkikh/kysely.git . && \
     git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
 
 RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
 
-# Установить только TypeScript для компиляции
 RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
 
-# Скомпилировать TypeScript → JavaScript
 RUN npx tsc -p tsconfig.json && \
     npx tsc -p tsconfig-cjs.json
 
-# Проверить что сборка успешна
 RUN ls -la dist/cjs/index.js dist/esm/index.js || \
-    (echo "❌ Build failed: dist files not found" && exit 1)
+    (echo "❌ Kysely build failed" && exit 1)
 
-# Очистить node_modules (НЕ трогая package.json!)
-RUN rm -rf node_modules
+RUN rm -rf node_modules test site example docs .github
 
-# Удалить ненужные файлы для оптимизации
-RUN rm -rf test site example docs .github
+# ============================================
+# Stage 3: Base with Package Managers
+# ============================================
+FROM alpine AS base
 
-FROM public.ecr.aws/docker/library/node:22-alpine AS pruner
-RUN apk update && apk add --no-cache libc6-compat tar gzip git jq
+RUN npm install turbo@^2.7.1 --global
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && \
+    corepack prepare pnpm@9.5.0 --activate
+
+# ============================================
+# Stage 4: Prune Workspace
+# ============================================
+FROM base AS pruner
+
 WORKDIR /app
+
 COPY . .
+
 RUN rm -rf packages/kysely
 COPY --from=kysely-builder /kysely ./packages/kysely
 
-# Ручная "обрезка" для web
-RUN mkdir -p /app/out/json /app/out/full
+RUN node -e "try { \
+      JSON.parse(require('fs').readFileSync('./packages/kysely/package.json', 'utf8')); \
+      console.log('✅ kysely package.json is valid'); \
+    } catch(e) { \
+      console.error('❌ Invalid kysely package.json:', e.message); \
+      process.exit(1); \
+    }"
 
-RUN cp package.json pnpm-lock.yaml pnpm-workspace.yaml /app/out/json/ && \
-    mkdir -p /app/out/json/web /app/out/json/packages/shared /app/out/json/packages/kysely /app/out/json/packages/ee && \
-    cp web/package.json /app/out/json/web/ && \
-    cp packages/shared/package.json /app/out/json/packages/shared/ && \
-    cp packages/kysely/package.json /app/out/json/packages/kysely/ && \
-    cp packages/ee/package.json /app/out/json/packages/ee/ || true
+RUN pnpm install --lockfile-only || true
 
-RUN cp -r web /app/out/full/ && \
-    cp -r packages /app/out/full/ && \
-    cp package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json /app/out/full/
+RUN turbo prune --scope=web --docker
 
-FROM public.ecr.aws/docker/library/node:22-alpine AS builder
-RUN apk update && apk add --no-cache libc6-compat git tar gzip python3 make g++ openssl openssl-dev
-
-ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
-ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
-ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
-
-ENV NPM_CONFIG_FETCH_RETRIES=5
-ENV NPM_CONFIG_FETCH_RETRY_FACTOR=2
-ENV NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000
-ENV NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000
-ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-ENV NPM_CONFIG_STRICT_SSL=false
-ENV PNPM_CONFIG_STRICT_SSL=false
-RUN npm install -g pnpm@9.15.0
-RUN npm install -g turbo@^2.6.1
-
-ENV NEXT_PRIVATE_WORKER_THREAD_COUNT=2
+# ============================================
+# Stage 5: Build Web Application
+# ============================================
+FROM base AS builder
 
 WORKDIR /app
 
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
-# Update next to safe version
-RUN PNPM_CONFIG_STRICT_SSL=false NPM_CONFIG_STRICT_SSL=false NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm update next --lockfile-only
+RUN pnpm install --no-frozen-lockfile
 
-# Use --no-frozen-lockfile to resolve mismatch between lockfile and simplified packages
-RUN PNPM_CONFIG_STRICT_SSL=false NPM_CONFIG_STRICT_SSL=false NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm install --no-frozen-lockfile
-
+# Docker build flags
 ENV DOCKER_BUILD=1
 ENV NEXT_MANUAL_SIG_HANDLE=true
 
+# Build-time environment variables for Next.js
 ARG NEXT_PUBLIC_PLAIN_APP_ID
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 ENV NEXT_PUBLIC_LANGFUSE_CLOUD_REGION=$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
@@ -98,7 +111,9 @@ ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ARG NEXT_PUBLIC_BASE_PATH
 ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 
+# Sentry configuration (only for Cloud deployments)
 ARG SENTRY_AUTH_TOKEN
+ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 ARG SENTRY_ORG
 ENV SENTRY_ORG=$SENTRY_ORG
 ARG SENTRY_PROJECT
@@ -110,40 +125,36 @@ ENV SENTRY_RELEASE=$NEXT_PUBLIC_BUILD_ID
 
 COPY --from=pruner /app/out/full/ .
 
-RUN if [ ! -f .env ]; then touch .env; fi
-
+# Remove middleware.ts (not needed in self-hosted)
 RUN rm -f ./web/src/middleware.ts
 
+# Disable telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_MANUAL_SIG_HANDLE=true
 ENV CI=true
-ENV TURBO_TELEMETRY_DISABLED=1
 
-RUN echo "=== Checking environment ===" && \
-    ls -la /app/.env* || true && \
-    echo "=== Checking kysely ===" && \
-    ls -la /app/packages/kysely/dist/ && \
-    echo "=== Checking pnpm list ===" && \
-    pnpm list kysely || true
+# Generate Prisma Client for web
+RUN cd packages/shared && npx prisma generate
 
-RUN NODE_OPTIONS='--max-old-space-size=4096' \
-    TURBO_FORCE=true \
-    pnpm turbo run build --filter=web... --no-cache
+# Build web application with optimized memory settings
+RUN NODE_OPTIONS='--max-old-space-size-percentage=75' \
+    turbo run build --filter=web...
 
-# CRITICAL: Clean up Go binaries from standalone after build
-RUN echo "Scanning for Go binaries in standalone build..." && \
-    find /app/web/.next/standalone -type f -executable -exec file {} \; | grep -i "go\|elf" | cut -d: -f1 | while read binary; do \
-        echo "Checking binary: $binary"; \
-        strings "$binary" 2>/dev/null | grep -q "golang\|runtime.goexit" && echo "Removing Go binary: $binary" && rm -f "$binary" || true; \
-    done || true
+# Verify Next.js standalone output
+RUN ls -la web/.next/standalone/web/server.js || \
+    (echo "❌ Web build failed: standalone output not found" && exit 1)
 
-# Remove any AWS SDK Go binaries if present
-RUN find /app/web/.next/standalone -type f -name "*aws*" -o -name "*golang*" -exec rm -f {} \; || true
+# Security audit
+RUN pnpm audit --audit-level=moderate --production || \
+    echo "⚠️ Security vulnerabilities found"
 
-FROM public.ecr.aws/docker/library/node:22-alpine AS runner
-ARG NPM_FALLBACK_REGISTRY=https://registry.npmmirror.com
-ENV NPM_FALLBACK_REGISTRY=$NPM_FALLBACK_REGISTRY
-ENV NPM_CONFIG_REGISTRY=$NPM_FALLBACK_REGISTRY
+# ============================================
+# Stage 6: Production Runtime
+# ============================================
+FROM base AS runner
+
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
 
 WORKDIR /app
 
@@ -157,35 +168,41 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV DOCKER_BUILD=0
 ENV NEXT_MANUAL_SIG_HANDLE=true
 
-RUN apk update && apk upgrade && apk add --no-cache libc6-compat shadow curl dumb-init \
-    && npm install -g npm@latest
+RUN apk add --no-cache dumb-init tzdata
 
+# Security: Don't run as root
 ARG UID=1001
 ARG GID=1001
-RUN addgroup -g ${GID} -S nodejs && \
-    adduser -S -u ${UID} -G nodejs nextjs
+RUN addgroup --system --gid ${GID} nodejs && \
+    adduser --system --uid ${UID} nextjs
 
-RUN NPM_CONFIG_STRICT_SSL=false npm install -g --no-package-lock --no-save \
-    prisma@7.2.0 \
-    tar@7.5.2 \
-    glob@11.1.0 && \
-    npm cache clean --force
+# Install Prisma CLI for migrations
+RUN npm install -g --no-package-lock --no-save prisma@7.2.0
 
+# Install dd-trace only for Cloud deployments
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 RUN if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
-    NPM_CONFIG_STRICT_SSL=false npm install --no-package-lock --no-save dd-trace@5.81.0 tar@7.5.2 glob@11.1.0 && npm cache clean --force; \
+      npm install --no-package-lock --no-save dd-trace@5.81.0; \
     fi
+
+# Install migrate tool for database migrations
+RUN MIGRATE_TARGET_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/\//-/g') && \
+    wget -q -O- https://github.com/golang-migrate/migrate/releases/download/v4.19.0/migrate.$MIGRATE_TARGET_ARCH.tar.gz | tar xvz && \
+    mv migrate /usr/bin/migrate
 
 COPY --from=builder --chown=nextjs:nodejs /app/web/next.config.mjs .
 COPY --from=builder --chown=nextjs:nodejs /app/web/package.json .
 
+# Copy Next.js standalone output
 COPY --from=builder --chown=nextjs:nodejs /app/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/web/.next/static ./web/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/web/public ./web/public
 
+# Copy Prisma schema and ClickHouse migrations
 COPY --from=builder --chown=nextjs:nodejs /app/packages/shared/prisma ./packages/shared/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/packages/shared/clickhouse ./packages/shared/clickhouse
 
+# Copy entrypoint and scripts
 COPY --chown=nextjs:nodejs ./web/entrypoint.sh ./web/entrypoint.sh
 COPY --chown=nextjs:nodejs ./packages/shared/scripts/cleanup.sql ./packages/shared/scripts/cleanup.sql
 RUN chmod +x ./web/entrypoint.sh
@@ -194,6 +211,11 @@ USER nextjs
 
 ENV PORT=3000
 
-ENTRYPOINT ["/usr/bin/dumb-init", "--", "./web/entrypoint.sh"]
+ENTRYPOINT ["dumb-init", "--", "./web/entrypoint.sh"]
 
-CMD ["/bin/sh", "-c", "if [ -n \"$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION\" ]; then exec node --import dd-trace/initialize.mjs ./web/server.js --keepAliveTimeout 110000; else exec node ./web/server.js --keepAliveTimeout 110000; fi"]
+# Start with dd-trace if Cloud deployment
+CMD if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
+      node --import dd-trace/initialize.mjs ./web/server.js --keepAliveTimeout 110000; \
+    else \
+      node ./web/server.js --keepAliveTimeout 110000; \
+    fi
