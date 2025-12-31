@@ -78,11 +78,34 @@ FROM base AS builder
 
 WORKDIR /app
 
+# Memory and network limits
+ENV NODE_OPTIONS="--max-old-space-size=1536"
+ENV PNPM_CONFIG_NETWORK_CONCURRENCY=3
+ENV PNPM_CONFIG_FETCH_RETRIES=5
+
+# Dummy ENV vars for Prisma/Next.js
+ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
+ENV NEXTAUTH_URL="http://localhost:3000"
+ENV NEXTAUTH_SECRET="dummy-secret-for-build-only"
+ENV SALT="dummy-salt-for-build"
+ENV ENCRYPTION_KEY="dummy-encryption-key-32-chars!!"
+
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
-RUN pnpm install --no-frozen-lockfile
+# Copy scripts (needed for types)
+COPY --from=pruner /app/scripts ./scripts
+
+# Copy kysely
+COPY --from=pruner /app/packages/kysely ./packages/kysely
+
+# Disable root preinstall script which uses npx and fails with overrides
+RUN sed -i 's/"preinstall": "npx only-allow pnpm && .\/scripts\/ensure-kysely.sh"/"preinstall": "true"/' package.json
+
+# CRITICAL: Skip preinstall (conflict with overrides), then rebuild native deps
+RUN pnpm install --no-frozen-lockfile --ignore-scripts && \
+    pnpm rebuild
 
 # Docker build flags
 ENV DOCKER_BUILD=1

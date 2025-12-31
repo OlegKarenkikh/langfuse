@@ -98,13 +98,35 @@ FROM base AS builder
 
 WORKDIR /app
 
+# Memory and network limits
+ENV NODE_OPTIONS="--max-old-space-size=1536"
+ENV PNPM_CONFIG_NETWORK_CONCURRENCY=3
+ENV PNPM_CONFIG_FETCH_RETRIES=5
+
+# Dummy ENV vars for Prisma
+ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres"
+ENV NEXTAUTH_URL="http://localhost:3000"
+ENV NEXTAUTH_SECRET="dummy-secret-for-build-only"
+ENV SALT="dummy-salt-for-build"
+ENV ENCRYPTION_KEY="dummy-encryption-key-32-chars!!"
+
 # Copy pruned lockfiles and package.json files
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
-# Install dependencies (no-frozen-lockfile due to kysely modifications)
-RUN pnpm install --no-frozen-lockfile
+# Copy scripts (needed for types)
+COPY --from=pruner /app/scripts ./scripts
+
+# Copy kysely
+COPY --from=pruner /app/packages/kysely ./packages/kysely
+
+# Disable root preinstall script which uses npx and fails with overrides
+RUN sed -i 's/"preinstall": "npx only-allow pnpm && .\/scripts\/ensure-kysely.sh"/"preinstall": "true"/' package.json
+
+# CRITICAL: Skip preinstall (conflict with overrides), then rebuild native deps
+RUN pnpm install --no-frozen-lockfile --ignore-scripts && \
+    pnpm rebuild
 
 # Build-time environment variables
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
@@ -118,10 +140,6 @@ COPY --from=pruner /app/out/full/ .
 
 # Generate Prisma Client (must be done before TypeScript compilation)
 RUN cd packages/shared && npx prisma generate
-
-# Verify Prisma Client was generated
-RUN ls -la node_modules/.prisma/client/index.js || \
-    (echo "❌ Prisma Client not found" && exit 1)
 
 # Build all dependencies and worker
 RUN turbo run build --filter=worker...
