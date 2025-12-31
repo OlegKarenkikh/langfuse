@@ -116,6 +116,8 @@ RUN node -e "const fs=require('fs'); if(fs.existsSync('package.json')) { const p
 
 # Limit concurrency to prevent OOM during install
 ENV PNPM_CONFIG_NETWORK_CONCURRENCY=3
+# Skip Puppeteer Chrome download (not needed for build, saves time and network)
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 # Install dependencies (no-frozen-lockfile due to kysely modifications)
 RUN pnpm install --no-frozen-lockfile
 
