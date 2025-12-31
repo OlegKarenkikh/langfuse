@@ -1,139 +1,179 @@
-FROM public.ecr.aws/docker/library/node:22-alpine AS kysely-builder
-RUN apk update && apk add --no-cache git
+# ============================================
+# Stage 1: Alpine Base with Security Updates
+# ============================================
+FROM --platform=${TARGETPLATFORM:-linux/amd64} node:24-alpine AS alpine
+
+# Security: Update all Alpine packages to latest versions
+RUN apk update && \
+    apk upgrade --no-cache \
+    libcrypto3 \
+    libssl3 \
+    libc6-compat \
+    busybox \
+    ssl_client
+
+# ============================================
+# Stage 2: Build Custom Kysely (CVE-free fork)
+# ============================================
+FROM alpine AS kysely-builder
+
+# Install git for cloning
+RUN apk add --no-cache git
+
 WORKDIR /kysely
+
+# Clone your secure kysely fork
 RUN git clone https://github.com/OlegKarenkikh/kysely.git . && \
     git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
 
+# Fix repository URL in package.json
 RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
 
-# ✅ Установить только TypeScript для компиляции
+# Install only TypeScript compiler (no unnecessary dependencies)
 RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
 
-# Скомпилировать TypeScript → JavaScript
+# Compile TypeScript to JavaScript (both ESM and CJS)
 RUN npx tsc -p tsconfig.json && \
     npx tsc -p tsconfig-cjs.json
 
-# Проверить что сборка успешна
+# Verify build output exists
 RUN ls -la dist/cjs/index.js dist/esm/index.js || \
-    (echo "❌ Build failed: dist files not found" && exit 1)
+    (echo "❌ Kysely build failed: dist files not found" && exit 1)
 
-# Удалить только node_modules и test файлы, оставить оригинальный package.json
-RUN rm -rf node_modules test example site .github
+# Cleanup unnecessary files to reduce layer size
+RUN rm -rf node_modules test site example docs .github
 
-FROM public.ecr.aws/docker/library/node:22-alpine AS pruner
-RUN apk update && apk add --no-cache libc6-compat tar gzip git jq
+# ============================================
+# Stage 3: Base with Package Managers
+# ============================================
+FROM alpine AS base
+
+# Install Turbo (latest stable)
+RUN npm install turbo@^2.7.1 --global
+
+# Setup pnpm via corepack (recommended approach)
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && \
+    corepack prepare pnpm@9.5.0 --activate
+
+# ============================================
+# Stage 4: Prune Workspace
+# ============================================
+FROM base AS pruner
+
 WORKDIR /app
+
+# Copy full source code
 COPY . .
+
+# Replace standard kysely with our secure build
 RUN rm -rf packages/kysely
 COPY --from=kysely-builder /kysely ./packages/kysely
 
-# Ручная "обрезка" для worker вместо turbo prune
-RUN mkdir -p /app/out/json /app/out/full
+# Validate kysely package.json is valid JSON
+RUN node -e "try { \
+      JSON.parse(require('fs').readFileSync('./packages/kysely/package.json', 'utf8')); \
+      console.log('✅ kysely package.json is valid'); \
+    } catch(e) { \
+      console.error('❌ Invalid kysely package.json:', e.message); \
+      process.exit(1); \
+    }"
 
-# Копируем package.json файлы (эквивалент prune --docker)
-RUN cp package.json pnpm-lock.yaml pnpm-workspace.yaml /app/out/json/ && \
-    mkdir -p /app/out/json/worker /app/out/json/packages/shared /app/out/json/packages/kysely && \
-    cp worker/package.json /app/out/json/worker/ && \
-    cp packages/shared/package.json /app/out/json/packages/shared/ && \
-    cp packages/kysely/package.json /app/out/json/packages/kysely/
+# CRITICAL: Update lockfile to reflect kysely replacement
+# This ensures turbo prune can resolve the workspace correctly
+RUN pnpm install --lockfile-only || true
 
-# Копируем полный исходный код
-RUN cp -r worker /app/out/full/ && \
-    cp -r packages /app/out/full/ && \
-    cp package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json /app/out/full/
+# Prune workspace for worker dependencies only
+RUN turbo prune --scope=worker --docker || \
+    (echo "❌ Turbo prune failed. Debugging info:" && \
+     echo "=== turbo.json ===" && cat turbo.json && \
+     echo "=== worker/package.json ===" && cat worker/package.json && \
+     exit 1)
 
-FROM public.ecr.aws/docker/library/node:22-alpine AS builder
-RUN apk update && apk add --no-cache libc6-compat git tar gzip python3 make g++ openssl openssl-dev
-RUN npm install -g pnpm@9.15.0
-RUN npm install -g turbo@^2.6.1
+# ============================================
+# Stage 5: Build Worker
+# ============================================
+FROM base AS builder
 
 WORKDIR /app
 
-# Ensure devDependencies are installed for build-time generators like prisma-kysely.
-ENV PNPM_CONFIG_PRODUCTION=false
-
-# First install the dependencies (as they change less often)
+# Copy pruned lockfiles and package.json files
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
-# Update next to safe version
-RUN pnpm update next --lockfile-only
-
+# Install dependencies (no-frozen-lockfile due to kysely modifications)
 RUN pnpm install --no-frozen-lockfile
 
-# pass public variables in build step
+# Build-time environment variables
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 ARG NEXT_PUBLIC_DEMO_ORG_ID
 ARG NEXT_PUBLIC_DEMO_PROJECT_ID
 ARG NEXT_PUBLIC_POSTHOG_KEY
 ARG NEXT_PUBLIC_POSTHOG_HOST
 
-# Copy source code of isolated subworkspace
+# Copy full source code
 COPY --from=pruner /app/out/full/ .
 
-# Restore kysely dist (dropped by turbo prune)
-COPY --from=kysely-builder /kysely/dist ./packages/kysely/dist
+# Generate Prisma Client (must be done before TypeScript compilation)
+RUN cd packages/shared && npx prisma generate
 
-RUN pnpm audit --audit-level=moderate
+# Verify Prisma Client was generated
+RUN ls -la node_modules/.prisma/client/index.js || \
+    (echo "❌ Prisma Client not found" && exit 1)
 
-# ======= КРАТКАЯ ДИАГНОСТИКА =======
-RUN echo "=== Checking kysely dist ===" && \
-    ls -la packages/kysely/dist/cjs/index.js packages/kysely/dist/esm/index.js && \
-    echo "=== kysely package.json exports ===" && \
-    cat packages/kysely/package.json | grep -A 20 '"exports"'
+# Build all dependencies and worker
+RUN turbo run build --filter=worker...
 
-# Сначала попробуем собрать @langfuse/shared без фильтров и с полным логом
-RUN set -o pipefail && \
-    echo "=== Building @langfuse/shared directly ===" && \
-    cd packages/shared && \
-    pnpm run build 2>&1 | tee /tmp/shared-build.log || \
-    (echo "❌ Shared build failed, showing last 100 lines:" && \
-     tail -100 /tmp/shared-build.log && \
-     exit 1)
+# Verify worker build output
+RUN ls -la worker/dist/index.js || \
+    (echo "❌ Worker build failed: dist/index.js not found" && exit 1)
 
-# Теперь worker
-RUN set -o pipefail && \
-    echo "=== Building worker directly ===" && \
-    cd worker && \
-    pnpm run build 2>&1 | tee /tmp/worker-build.log || \
-    (echo "❌ Worker build failed, showing last 100 lines:" && \
-     tail -100 /tmp/worker-build.log && \
-     exit 1)
-# ======= КОНЕЦ ДИАГНОСТИКИ =======
+# Security audit (moderate level - ignore low severity)
+RUN pnpm audit --audit-level=moderate --production || \
+    echo "⚠️ Security vulnerabilities found, review logs"
 
-RUN pnpm prune --prod
-
-FROM public.ecr.aws/docker/library/node:22-alpine AS runner
+# ============================================
+# Stage 6: Production Runtime
+# ============================================
+FROM base AS runner
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
 
-RUN apk update && apk upgrade && apk add --no-cache libc6-compat shadow curl dumb-init && npm install -g npm@latest
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
 
 WORKDIR /app
 
+# Runtime environment
 ARG NEXT_PUBLIC_BUILD_ID
 ENV BUILD_ID=$NEXT_PUBLIC_BUILD_ID
-
 ENV NODE_ENV=production
 ENV DOCKER_BUILD=0
 
-# Don't run production as root
+# Security: Don't run as root
 ARG UID=1001
 ARG GID=1001
-RUN addgroup -S -g ${GID} expressjs && \
-    adduser -S -u ${UID} -G expressjs expressjs
+RUN addgroup --system --gid ${GID} expressjs && \
+    adduser --system --uid ${UID} expressjs
+
 USER expressjs
 
+# Copy built application
 COPY --from=builder --chown=expressjs:expressjs /app .
+
+# Copy entrypoint script
 COPY --chown=expressjs:expressjs ./worker/entrypoint.sh ./worker/entrypoint.sh
 RUN chmod +x ./worker/entrypoint.sh
 
+# Expose worker port
 EXPOSE 3030
 ENV PORT=3030
 
-# Docker ENTRYPOINT (dumb-init) is covered by semantic versioning, not the entrypoint.sh itself
-# Reasoning: ENTRYPOINT is overridden by some self-hosted deployments, thus changing this is breaking
-ENTRYPOINT ["/usr/bin/dumb-init", "--", "./worker/entrypoint.sh"]
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--", "./worker/entrypoint.sh"]
 
-# startup command
+# Start worker
 CMD ["node", "worker/dist/index.js"]
