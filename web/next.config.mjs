@@ -73,6 +73,11 @@ const nextConfig = {
       // Also not needed for the non-turbopack based dev server.
       "react-resizable/css/styles.css":
         "../node_modules/.pnpm/react-resizable@3.0.5_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/react-resizable/css/styles.css",
+      // Exclude Prisma Client from client-side builds (Turbopack)
+      // Prisma Client should only be used server-side
+      ".prisma/client": false,
+      ".prisma/client/index-browser": false,
+      "@prisma/client": false,
     },
   },
   experimental: {
@@ -201,18 +206,29 @@ const nextConfig = {
     
     // Fix Prisma Client resolution in pnpm workspace
     if (!isServer) {
-      // For client-side builds, exclude Prisma Client
+      // For client-side builds, exclude Prisma Client completely
       config.resolve.alias = {
         ...config.resolve.alias,
         ".prisma/client": false,
         "@prisma/client": false,
+        // Also handle the browser entry point
+        ".prisma/client/index-browser": false,
       };
+      // Add to externals to prevent bundling
+      config.externals = config.externals || [];
+      config.externals.push(".prisma/client", "@prisma/client");
     } else {
       // For server-side builds, ensure proper resolution
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        ".prisma/client": require.resolve("@prisma/client"),
-      };
+      try {
+        const prismaClientPath = require.resolve("@prisma/client");
+        config.resolve.alias = {
+          ...config.resolve.alias,
+          ".prisma/client": prismaClientPath.replace(/@prisma[\\/]client[\\/]index\.js$/, ".prisma/client"),
+        };
+      } catch (e) {
+        // If Prisma Client is not found, continue without alias
+        console.warn("Prisma Client not found for webpack alias:", e.message);
+      }
     }
     
     return config;

@@ -69,6 +69,10 @@ Module not found: Can't resolve '.prisma/client/index-browser'
 - Добавлена webpack конфигурация в `web/next.config.mjs` для правильного разрешения Prisma Client в pnpm workspace:
   - Добавлены `@prisma/client` и `.prisma/client` в `serverExternalPackages`
   - Добавлена логика в `webpack` для исключения Prisma Client из клиентского бандла и правильного разрешения на сервере
+  - Добавлены alias для Turbopack (используется в dev и production сборках Next.js 16) для исключения Prisma Client из клиентского кода:
+    - `.prisma/client` → `false`
+    - `.prisma/client/index-browser` → `false`
+    - `@prisma/client` → `false`
 
 ### 9. Добавлены build dependencies для нативных модулей
 
