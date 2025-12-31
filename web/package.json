@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "scripts": {
     "build": "INLINE_RUNTIME_CHUNK=false next build",

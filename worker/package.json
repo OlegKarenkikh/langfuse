@@ -5,7 +5,7 @@
   "license": "MIT",
   "private": true,
   "engines": {
-    "node": "22"
+    "node": "24"
   },
   "scripts": {
     "test": "dotenv -e ../.env -- vitest run --pool=forks --poolOptions.forks.singleFork=true",
