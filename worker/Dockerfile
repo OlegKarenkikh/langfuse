@@ -107,6 +107,8 @@ COPY --from=pruner /app/out/json/ .
 # Remove preinstall from root package.json to avoid ensure-kysely.sh script error
 RUN node -e "const fs=require('fs'); if(fs.existsSync('package.json')) { const pkg=JSON.parse(fs.readFileSync('package.json')); if(pkg.scripts && pkg.scripts.preinstall) { delete pkg.scripts.preinstall; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2)); } }"
 
+# Limit concurrency to prevent OOM during install
+ENV PNPM_CONFIG_NETWORK_CONCURRENCY=3
 # Install dependencies (no-frozen-lockfile due to kysely modifications)
 RUN pnpm install --no-frozen-lockfile
 
@@ -138,8 +140,10 @@ RUN if find node_modules -name ".prisma" -type d 2>/dev/null | head -1 | grep -q
        find node_modules -name ".prisma" -type d 2>/dev/null | head -5 || true; \
     fi
 
-# Build all dependencies and worker
-RUN turbo run build --filter=worker...
+# Build all dependencies and worker with optimized memory settings
+# Use 1.5GB memory limit to prevent OOM on small instances
+RUN NODE_OPTIONS='--max-old-space-size=1536' \
+    turbo run build --filter=worker...
 
 # Verify worker build output
 RUN ls -la worker/dist/index.js || \
