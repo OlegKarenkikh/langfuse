@@ -65,8 +65,6 @@ ENV NEXT_PRIVATE_WORKER_THREAD_COUNT=2
 
 WORKDIR /app
 
-COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
 # Update next to safe version
