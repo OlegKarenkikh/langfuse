@@ -160,6 +160,14 @@ docker build -f web/Dockerfile -t olegkarenkikh/langfuse_langfuse-web:4 --build-
   - Используйте более мощную машину для сборки (рекомендуется 16GB+ RAM)
   - Рассмотрите возможность сборки на удаленной машине или CI/CD с большим объемом памяти
 
+### Проблема: Ошибка "failed to receive status: rpc error" при экспорте образа
+
+**Решение:**
+- ✅ **НЕ КРИТИЧНО**: Эта ошибка возникает при экспорте больших образов, но сами образы уже собраны
+- Проверьте наличие образов: `docker images | grep olegkarenkikh/langfuse`
+- Если образы присутствуют, сборка прошла успешно
+- Если образы отсутствуют, попробуйте пересобрать только проблемный сервис: `docker compose -f docker-compose.custom.yml build <service-name>`
+
 ### Проблема: Ошибки при установке зависимостей
 
 **Решение:**
@@ -178,6 +186,8 @@ docker images | grep olegkarenkikh/langfuse
 Должны быть созданы:
 - `olegkarenkikh/langfuse_langfuse-worker:4`
 - `olegkarenkikh/langfuse_langfuse-web:4`
+
+**Примечание:** Если в конце сборки появляется ошибка `failed to receive status: rpc error: code = Unavailable desc = error reading from server: EOF`, это не критично - это проблема с экспортом больших образов, но сами образы уже собраны. Проверьте наличие образов командой выше.
 
 ## Запуск собранных контейнеров
 
