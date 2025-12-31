@@ -97,8 +97,7 @@
     "@langchain/core": "^0.3.80",
     "@trpc/server": "^11.8.1",
     "@babel/runtime": "^7.26.10",
-    "jsondiffpatch": "^0.7.2",
-    "braces": "^3.0.3"
+    "jsondiffpatch": "^0.7.2"
   },
   "pnpm": {
     "overrides": {
