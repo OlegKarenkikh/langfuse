@@ -76,6 +76,13 @@ RUN turbo prune --scope=web --docker
 # ============================================
 FROM base AS builder
 
+# Install build dependencies for native modules (better-sqlite3, etc.)
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    libc-dev
+
 WORKDIR /app
 
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
@@ -157,9 +164,11 @@ RUN if find node_modules -name ".prisma" -type d 2>/dev/null | head -1 | grep -q
     fi
 
 # Build web application with optimized memory settings
-# Use 4GB memory limit for better compatibility with limited resources
-RUN NODE_OPTIONS='--max-old-space-size=4096' \
-    turbo run build --filter=web...
+# Use 3GB memory limit - smaller limit can work better if system can't allocate large chunks
+# Also set Next.js build optimizations to reduce memory usage
+ENV NODE_OPTIONS='--max-old-space-size=3072'
+ENV NEXT_BUILD_OPTIMIZE=1
+RUN turbo run build --filter=web...
 
 # Verify Next.js standalone output
 RUN ls -la web/.next/standalone/web/server.js || \

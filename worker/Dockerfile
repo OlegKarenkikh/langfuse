@@ -96,6 +96,13 @@ RUN turbo prune --scope=worker --docker || \
 # ============================================
 FROM base AS builder
 
+# Install build dependencies for native modules (better-sqlite3, etc.)
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    libc-dev
+
 WORKDIR /app
 
 # Copy pruned lockfiles and package.json files
