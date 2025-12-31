@@ -73,15 +73,14 @@ const nextConfig = {
       // Also not needed for the non-turbopack based dev server.
       "react-resizable/css/styles.css":
         "../node_modules/.pnpm/react-resizable@3.0.5_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/react-resizable/css/styles.css",
-      // Exclude Prisma Client from client-side builds (Turbopack)
-      // Prisma Client should only be used server-side
-      ".prisma/client": false,
-      ".prisma/client/index-browser": false,
-      "@prisma/client": false,
+      // Note: Prisma Client exclusion is handled in webpack config below
+      // Turbopack doesn't support false values in resolveAlias, so we rely on webpack for production builds
     },
   },
   experimental: {
     browserDebugInfoInTerminal: true, // Logs browser logs to terminal
+    // Exclude Prisma Client from client-side bundle (for Turbopack)
+    serverComponentsExternalPackages: ["@prisma/client", ".prisma/client"],
     // TODO: enable with new next version! 15.6
     // see: https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopackPersistentCaching
     // turbopackPersistentCaching: true,
