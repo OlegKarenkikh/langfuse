@@ -59,6 +59,12 @@ COPY . .
 RUN rm -rf packages/kysely
 COPY --from=kysely-builder /kysely ./packages/kysely
 
+# Patch the Kysely migration provider to remove webpackIgnore comment that breaks Turbopack
+RUN sed -i 's|/\* webpackIgnore: true \*/||g' ./packages/kysely/src/migration/file-migration-provider.ts
+
+# Rebuild Kysely after patching
+RUN cd packages/kysely && npm install --no-save typescript@~5.9.3 --ignore-scripts && npm run build
+
 RUN node -e "try { \
       JSON.parse(require('fs').readFileSync('./packages/kysely/package.json', 'utf8')); \
       console.log('✅ kysely package.json is valid'); \
@@ -189,17 +195,14 @@ RUN echo "=== Build Environment Check ===" && \
     echo "=== Starting build ==="
 
 # Build with detailed error logging for debugging
-# Disable Turbopack for production build (Turbopack doesn't support standalone output)
-# Use Webpack instead which properly supports output: "standalone"
-# Force Webpack by setting multiple environment variables and using explicit flags
-RUN echo "=== Starting Next.js build with Webpack (Turbopack disabled for standalone output) ===" && \
-    export TURBOPACK=0 && \
-    export NEXT_TURBOPACK=0 && \
-    export TURBO=0 && \
+# Use Next.js with webpack (required for standalone output) instead of Turbopack
+# Force webpack by setting environment variables before the build command
+ENV TURBOPACK=0
+ENV NEXT_BUILD_TURBO=false
+RUN echo "=== Starting Next.js build with webpack ===" && \
+    echo "TURBOPACK=$TURBOPACK" && \
+    echo "NEXT_BUILD_TURBO=$NEXT_BUILD_TURBO" && \
     NODE_OPTIONS='--max-old-space-size=3072' \
-    TURBOPACK=0 \
-    NEXT_TURBOPACK=0 \
-    TURBO=0 \
     turbo run build --filter=web... 2>&1 | tee /tmp/build.log; \
     BUILD_EXIT_CODE=$?; \
     if [ $BUILD_EXIT_CODE -ne 0 ]; then \

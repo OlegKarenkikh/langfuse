@@ -48,6 +48,16 @@ const reportToHeader = {
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+  // Force webpack usage instead of Turbopack for production builds
+  // This is required for standalone output to work properly
+  experimental: {
+    browserDebugInfoInTerminal: true, // Logs browser logs to terminal
+    // Exclude Prisma Client from client-side bundle (for Turbopack)
+    serverComponentsExternalPackages: ["@prisma/client", ".prisma/client"],
+    // TODO: enable with new next version! 15.6
+    // see: https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopackPersistentCaching
+    // turbopackPersistentCaching: true,
+  },
   staticPageGenerationTimeout: 500, // default is 60. Required for build process for amd
   transpilePackages: ["@langfuse/shared", "vis-network/standalone"],
   reactStrictMode: true,
@@ -84,14 +94,6 @@ const nextConfig = {
       // Note: Prisma Client exclusion is handled in webpack config below
       // Turbopack doesn't support false values in resolveAlias, so we rely on webpack for production builds
     },
-  },
-  experimental: {
-    browserDebugInfoInTerminal: true, // Logs browser logs to terminal
-    // Exclude Prisma Client from client-side bundle (for Turbopack)
-    serverComponentsExternalPackages: ["@prisma/client", ".prisma/client"],
-    // TODO: enable with new next version! 15.6
-    // see: https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopackPersistentCaching
-    // turbopackPersistentCaching: true,
   },
 
   /**
