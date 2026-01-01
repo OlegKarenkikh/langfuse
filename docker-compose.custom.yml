@@ -5,9 +5,6 @@ services:
       dockerfile: worker/Dockerfile
       args:
         - NEXT_PUBLIC_BUILD_ID=${NEXT_PUBLIC_BUILD_ID:-local}
-      # Disable provenance/SBOM to prevent EOF errors during export
-      provenance: false
-      sbom: false
     image: olegkarenkikh/langfuse:worker
     restart: always
     depends_on:
@@ -47,9 +44,6 @@ services:
       dockerfile: web/Dockerfile
       args:
         - NEXT_PUBLIC_BUILD_ID=${NEXT_PUBLIC_BUILD_ID:-local}
-      # Disable provenance/SBOM to prevent EOF errors during export
-      provenance: false
-      sbom: false
     image: olegkarenkikh/langfuse:web
     restart: always
     depends_on:

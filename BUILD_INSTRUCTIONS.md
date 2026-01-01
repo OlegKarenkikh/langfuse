@@ -261,9 +261,10 @@ rpc error: code = Unavailable desc = error reading from server: EOF (при reso
    - Удаляет source maps (опционально, можно оставить для debugging)
    - Значительно уменьшает размер данных, копируемых в финальный образ
 
-2. **Отключен provenance/SBOM** в `docker-compose.custom.yml`:
-   - Добавлены `provenance: false` и `sbom: false` в секции `build` для обоих сервисов
-   - Это предотвращает ошибки при создании metadata для больших образов
+2. **Примечание о provenance/SBOM**:
+   - В новых версиях Docker Compose можно отключить через `provenance: false` и `sbom: false` в секции `build`
+   - В старых версиях (например, в Coolify) эти опции не поддерживаются, поэтому полагаемся на оптимизацию размера образа через stage `optimizer`
+   - Если используется Docker Compose v2.23+, можно добавить эти опции для дополнительной оптимизации
 
 Это предотвращает ошибки EOF при экспорте больших образов и ускоряет процесс сборки.
 
@@ -277,8 +278,10 @@ target langfuse-worker: rpc error: code = Unavailable desc = error reading from 
 Причина: BuildKit пытается создать provenance metadata (SBOM - Software Bill of Materials) для образа, что требует дополнительных ресурсов и может вызывать ошибки EOF при экспорте больших образов.
 
 Решение:
-- ✅ **ИСПРАВЛЕНО**: Добавлены `provenance: false` и `sbom: false` в секции `build` для обоих сервисов в `docker-compose.custom.yml`
-- Это отключает генерацию provenance metadata и SBOM, что предотвращает ошибки при экспорте
+- ✅ **ИСПРАВЛЕНО**: Оптимизация размера образа через stage `optimizer` значительно уменьшает размер экспортируемых данных
+- ⚠️ **Примечание**: Опции `provenance: false` и `sbom: false` поддерживаются только в Docker Compose v2.23+
+- В старых версиях Docker Compose (например, в Coolify) эти опции не поддерживаются и вызывают ошибку валидации
+- Основная оптимизация достигается через удаление ненужных файлов в stage `optimizer`, что предотвращает ошибки EOF
 
 ### Проблема: Ошибка "failed to receive status: rpc error" при экспорте образа
 

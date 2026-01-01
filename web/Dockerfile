@@ -170,7 +170,36 @@ RUN if find node_modules -name ".prisma" -type d 2>/dev/null | head -1 | grep -q
 # Also set Next.js build optimizations to reduce memory usage
 ENV NODE_OPTIONS='--max-old-space-size=1536'
 ENV NEXT_BUILD_OPTIMIZE=1
-RUN turbo run build --filter=web...
+
+# Verify environment before build
+RUN echo "=== Build Environment Check ===" && \
+    echo "NODE_OPTIONS: $NODE_OPTIONS" && \
+    echo "NEXT_BUILD_OPTIMIZE: $NEXT_BUILD_OPTIMIZE" && \
+    echo "DATABASE_URL: ${DATABASE_URL:0:50}..." && \
+    echo "Working directory: $(pwd)" && \
+    echo "Node version: $(node --version)" && \
+    echo "pnpm version: $(pnpm --version)" && \
+    echo "Turbo version: $(turbo --version)" && \
+    echo "Available memory: $(free -h 2>/dev/null || echo 'N/A')" && \
+    echo "Disk space: $(df -h / 2>/dev/null | tail -1 || echo 'N/A')" && \
+    echo "=== Starting build ==="
+
+# Build with detailed error logging for debugging
+RUN turbo run build --filter=web... 2>&1 | tee /tmp/build.log || \
+    (echo "❌ Build failed. Showing last 200 lines of build log:" && \
+     tail -200 /tmp/build.log && \
+     echo "" && \
+     echo "=== Error summary ===" && \
+     (grep -i "error\|fail\|exception" /tmp/build.log | tail -50 || echo "No error patterns found") && \
+     echo "" && \
+     echo "=== Build context ===" && \
+     echo "Checking if Prisma Client exists:" && \
+     find node_modules -name ".prisma" -type d 2>/dev/null | head -3 || echo "Prisma Client not found" && \
+     echo "Checking if web directory exists:" && \
+     ls -la web/ 2>/dev/null || echo "web directory not found" && \
+     echo "Checking if packages/shared exists:" && \
+     ls -la packages/shared/ 2>/dev/null | head -5 || echo "packages/shared not found" && \
+     exit 1)
 
 # Verify Next.js standalone output
 RUN ls -la web/.next/standalone/web/server.js || \
