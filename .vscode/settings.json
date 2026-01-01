@@ -29,5 +29,6 @@
   },
   "eslint.lintTask.enable": true,
   "eslint.workingDirectories": ["./web", "./worker"],
-  "eslint.useFlatConfig": false
+  "eslint.useFlatConfig": false,
+  "kiroAgent.configureMCP": "Disabled"
 }

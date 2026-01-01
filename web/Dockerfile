@@ -191,9 +191,15 @@ RUN echo "=== Build Environment Check ===" && \
 # Build with detailed error logging for debugging
 # Disable Turbopack for production build (Turbopack doesn't support standalone output)
 # Use Webpack instead which properly supports output: "standalone"
+# Force Webpack by setting multiple environment variables and using explicit flags
 RUN echo "=== Starting Next.js build with Webpack (Turbopack disabled for standalone output) ===" && \
+    export TURBOPACK=0 && \
+    export NEXT_TURBOPACK=0 && \
+    export TURBO=0 && \
     NODE_OPTIONS='--max-old-space-size=3072' \
     TURBOPACK=0 \
+    NEXT_TURBOPACK=0 \
+    TURBO=0 \
     turbo run build --filter=web... 2>&1 | tee /tmp/build.log; \
     BUILD_EXIT_CODE=$?; \
     if [ $BUILD_EXIT_CODE -ne 0 ]; then \
