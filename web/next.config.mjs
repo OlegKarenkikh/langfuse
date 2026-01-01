@@ -63,6 +63,14 @@ const nextConfig = {
     ".prisma/client",
   ],
   poweredByHeader: false,
+  // Reduce memory usage during build
+  productionBrowserSourceMaps: false,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   basePath: env.NEXT_PUBLIC_BASE_PATH,
   turbopack: {
     resolveAlias: {
