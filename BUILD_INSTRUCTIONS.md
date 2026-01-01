@@ -97,9 +97,13 @@ gyp ERR! stack Error: Could not find any Python installation to use
 Проблема: Ошибка нехватки памяти при сборке web приложения:
 ```
 ResourceExhausted: cannot allocate memory
+x Internal errors encountered: external process killed a task
 ```
 
-Решение: Настройка памяти в `web/Dockerfile` установлена на 3GB (`--max-old-space-size=3072`). Меньший лимит может работать лучше, если система не может выделить большие блоки памяти. Также добавлена переменная окружения `NEXT_BUILD_OPTIMIZE=1` для оптимизации сборки.
+Решение: 
+- Настройка памяти в `web/Dockerfile` установлена на 2GB (`--max-old-space-size=2048`). Это баланс между достаточным объемом памяти для сборки и возможностями системы.
+- Добавлена переменная окружения `NEXT_BUILD_OPTIMIZE=1` для оптимизации сборки.
+- Исправлена синтаксическая ошибка в проверке кода выхода сборки: заменен `${PIPESTATUS[0]}` (работает только в bash) на `set -o pipefail` и `$?` (работает в `/bin/sh`).
 
 **КРИТИЧЕСКИ ВАЖНО:** Для успешной сборки web приложения требуется:
 - **Минимум 8GB доступной RAM на хосте**
@@ -195,8 +199,14 @@ docker build -f web/Dockerfile -t olegkarenkikh/langfuse_langfuse-web:4 --build-
 
 ### Проблема: Ошибка "cannot allocate memory" или "ResourceExhausted" при сборке web приложения
 
+**Симптомы:**
+- `ResourceExhausted: cannot allocate memory`
+- `x Internal errors encountered: external process killed a task`
+- `/bin/sh: syntax error: bad substitution` (при использовании `${PIPESTATUS[0]}`)
+
 **Решение:**
-- ✅ **ИСПРАВЛЕНО**: Установлен лимит памяти для Node.js на 3GB с оптимизациями сборки
+- ✅ **ИСПРАВЛЕНО**: Установлен лимит памяти для Node.js на 2GB (`--max-old-space-size=2048`) с оптимизациями сборки
+- ✅ **ИСПРАВЛЕНО**: Исправлена синтаксическая ошибка в проверке кода выхода сборки - заменен `${PIPESTATUS[0]}` на `set -o pipefail` и `$?`
 - **КРИТИЧЕСКИ ВАЖНО:** Убедитесь, что Docker Desktop имеет достаточно памяти:
   1. Откройте Docker Desktop
   2. Перейдите в Settings (⚙️) → Resources → Advanced
@@ -214,7 +224,7 @@ docker build -f web/Dockerfile -t olegkarenkikh/langfuse_langfuse-web:4 --build-
   3. Проверьте, что на хосте достаточно свободной RAM (минимум 8GB)
   4. Используйте более мощную машину для сборки (рекомендуется 16GB+ RAM)
   5. Рассмотрите возможность сборки на удаленной машине или CI/CD с большим объемом памяти
-  6. Если доступно менее 8GB RAM, попробуйте уменьшить значение `--max-old-space-size` в `web/Dockerfile` до 2048 (2GB), но это может привести к более медленной сборке или другим проблемам
+  6. Если доступно менее 8GB RAM, можно попробовать уменьшить значение `--max-old-space-size` в `web/Dockerfile` до 1536 (1.5GB), но это может привести к более медленной сборке
 
 ### Проблема: Ошибки "Module not found" для @emotion, react-resizable или Prisma Client
 
