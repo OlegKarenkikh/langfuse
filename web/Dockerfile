@@ -185,25 +185,58 @@ RUN echo "=== Build Environment Check ===" && \
     echo "=== Starting build ==="
 
 # Build with detailed error logging for debugging
-RUN turbo run build --filter=web... 2>&1 | tee /tmp/build.log || \
-    (echo "❌ Build failed. Showing last 200 lines of build log:" && \
-     tail -200 /tmp/build.log && \
-     echo "" && \
-     echo "=== Error summary ===" && \
-     (grep -i "error\|fail\|exception" /tmp/build.log | tail -50 || echo "No error patterns found") && \
-     echo "" && \
-     echo "=== Build context ===" && \
-     echo "Checking if Prisma Client exists:" && \
-     find node_modules -name ".prisma" -type d 2>/dev/null | head -3 || echo "Prisma Client not found" && \
-     echo "Checking if web directory exists:" && \
-     ls -la web/ 2>/dev/null || echo "web directory not found" && \
-     echo "Checking if packages/shared exists:" && \
-     ls -la packages/shared/ 2>/dev/null | head -5 || echo "packages/shared not found" && \
-     exit 1)
+RUN turbo run build --filter=web... 2>&1 | tee /tmp/build.log && \
+    BUILD_EXIT_CODE=${PIPESTATUS[0]} && \
+    echo "=== Build completed with exit code: $BUILD_EXIT_CODE ===" && \
+    if [ $BUILD_EXIT_CODE -ne 0 ]; then \
+        echo "❌ Build failed with exit code $BUILD_EXIT_CODE. Showing last 200 lines of build log:" && \
+        tail -200 /tmp/build.log && \
+        echo "" && \
+        echo "=== Error summary ===" && \
+        (grep -i "error\|fail\|exception" /tmp/build.log | tail -50 || echo "No error patterns found") && \
+        echo "" && \
+        echo "=== Build context ===" && \
+        echo "Checking if Prisma Client exists:" && \
+        find node_modules -name ".prisma" -type d 2>/dev/null | head -3 || echo "Prisma Client not found" && \
+        echo "Checking if web directory exists:" && \
+        ls -la web/ 2>/dev/null || echo "web directory not found" && \
+        echo "Checking if packages/shared exists:" && \
+        ls -la packages/shared/ 2>/dev/null | head -5 || echo "packages/shared not found" && \
+        exit 1; \
+    else \
+        echo "✅ Build command completed successfully" && \
+        echo "Checking build output..." && \
+        echo "Last 50 lines of build log:" && \
+        tail -50 /tmp/build.log && \
+        echo "" && \
+        echo "Checking for Next.js build completion message:" && \
+        (grep -i "compiled\|build.*complete\|standalone" /tmp/build.log | tail -10 || echo "No build completion message found"); \
+    fi
 
-# Verify Next.js standalone output
-RUN ls -la web/.next/standalone/web/server.js || \
-    (echo "❌ Web build failed: standalone output not found" && exit 1)
+# Verify Next.js build completed successfully
+RUN echo "=== Verifying Next.js build output ===" && \
+    echo "Checking if web/.next exists:" && \
+    ls -la web/.next/ 2>/dev/null || (echo "❌ web/.next directory not found" && exit 1) && \
+    echo "" && \
+    echo "Checking standalone directory structure:" && \
+    ls -la web/.next/standalone/ 2>/dev/null || (echo "❌ web/.next/standalone directory not found" && exit 1) && \
+    echo "" && \
+    echo "Checking for server.js:" && \
+    if [ -f "web/.next/standalone/web/server.js" ]; then \
+        echo "✅ Found: web/.next/standalone/web/server.js" && \
+        ls -lh web/.next/standalone/web/server.js; \
+    elif [ -f "web/.next/standalone/server.js" ]; then \
+        echo "✅ Found: web/.next/standalone/server.js (alternative location)" && \
+        ls -lh web/.next/standalone/server.js; \
+    else \
+        echo "❌ server.js not found in expected locations" && \
+        echo "Contents of web/.next/standalone:" && \
+        find web/.next/standalone -type f -name "*.js" | head -20 || echo "No .js files found" && \
+        echo "" && \
+        echo "Full directory tree:" && \
+        find web/.next/standalone -type d | head -30 || echo "Directory listing failed" && \
+        exit 1; \
+    fi
 
 # Clean up build artifacts to reduce image size and prevent export issues
 # Remove unnecessary files that are not needed in the final image
