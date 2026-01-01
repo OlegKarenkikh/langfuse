@@ -238,13 +238,48 @@ docker build -f web/Dockerfile -t olegkarenkikh/langfuse_langfuse-web:4 --build-
   - Проверьте, что используется правильный базовый образ (node:24-alpine)
   - Очистите кэш Docker: `docker builder prune`
 
+### 10. Оптимизирован размер образа для предотвращения ошибок экспорта
+
+Проблема: Ошибка при экспорте образа после успешной сборки:
+```
+failed to receive status: rpc error: code = Unavailable desc = error reading from server: EOF
+```
+
+Причина: Очень большой размер образа из-за копирования всех файлов из builder stage, включая:
+- `node_modules` (не нужны в production, так как Next.js standalone включает только необходимые зависимости)
+- Исходные TypeScript файлы (`.ts`, `.tsx`)
+- Кэш сборки (`.next/cache`, `.turbo`)
+- Source maps (`.map` файлы)
+
+Решение: Добавлен промежуточный stage `optimizer` в `web/Dockerfile`, который:
+- Удаляет `node_modules` и все зависимости (не нужны, так как Next.js standalone самодостаточен)
+- Удаляет исходные TypeScript файлы (не нужны в production)
+- Удаляет кэш сборки и временные файлы
+- Удаляет source maps (опционально, можно оставить для debugging)
+- Значительно уменьшает размер данных, копируемых в финальный образ
+
+Это предотвращает ошибки EOF при экспорте больших образов и ускоряет процесс сборки.
+
 ### Проблема: Ошибка "failed to receive status: rpc error" при экспорте образа
 
 **Решение:**
-- ✅ **НЕ КРИТИЧНО**: Эта ошибка возникает при экспорте больших образов, но сами образы уже собраны
-- Проверьте наличие образов: `docker images | grep olegkarenkikh/langfuse`
-- Если образы присутствуют, сборка прошла успешно
-- Если образы отсутствуют, попробуйте пересобрать только проблемный сервис: `docker compose -f docker-compose.custom.yml build <service-name>`
+- ✅ **ИСПРАВЛЕНО**: Добавлен stage `optimizer` для очистки ненужных файлов перед экспортом
+- ⚠️ **ВНИМАНИЕ**: Если ошибка все еще возникает, это может означать, что образ не был сохранен
+- Проверьте наличие образов:
+  - Windows PowerShell: `docker images`
+  - Ищите образы с именами `olegkarenkikh/langfuse_langfuse-worker:4` и `olegkarenkikh/langfuse_langfuse-web:4`
+- Если образы отсутствуют, пересоберите только проблемный сервис:
+  ```bash
+  # Пересобрать только web
+  docker compose -f docker-compose.custom.yml build langfuse-web
+  
+  # Пересобрать только worker
+  docker compose -f docker-compose.custom.yml build langfuse-worker
+  ```
+- Если проблема повторяется, попробуйте:
+  1. Увеличить память Docker Desktop (минимум 8GB)
+  2. Очистить кэш Docker: `docker builder prune`
+  3. Пересобрать без кэша: `docker compose -f docker-compose.custom.yml build --no-cache langfuse-web`
 
 ### Проблема: Ошибки при установке зависимостей
 

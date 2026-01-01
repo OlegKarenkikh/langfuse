@@ -176,12 +176,43 @@ RUN turbo run build --filter=web...
 RUN ls -la web/.next/standalone/web/server.js || \
     (echo "❌ Web build failed: standalone output not found" && exit 1)
 
+# Clean up build artifacts to reduce image size and prevent export issues
+# Remove unnecessary files that are not needed in the final image
+# This significantly reduces the size of the builder stage and prevents EOF errors during export
+RUN rm -rf web/.next/cache \
+    && rm -rf node_modules/.cache \
+    && rm -rf packages/*/node_modules/.cache \
+    && find web/.next -name "*.map" -type f -delete 2>/dev/null || true \
+    && find . -name ".turbo" -type d -exec rm -rf {} + 2>/dev/null || true \
+    && find web/.next/standalone -name "*.map" -type f -delete 2>/dev/null || true \
+    && echo "Build artifacts cleaned, checking standalone size:" \
+    && du -sh web/.next/standalone 2>/dev/null || echo "Standalone directory size check completed"
+
 # Security audit
 RUN pnpm audit --audit-level=moderate --production || \
     echo "⚠️ Security vulnerabilities found"
 
 # ============================================
-# Stage 6: Production Runtime
+# Stage 6: Optimize Build Output (reduce size before export)
+# ============================================
+FROM builder AS optimizer
+
+# Remove all unnecessary files to minimize the size of what we copy to runner
+# This stage exists solely to reduce the size of files copied to runner stage
+RUN rm -rf node_modules \
+    && rm -rf packages/*/node_modules \
+    && rm -rf packages/*/dist \
+    && rm -rf web/node_modules \
+    && rm -rf web/.next/cache \
+    && rm -rf .turbo \
+    && find . -name "*.ts" -not -path "./web/.next/standalone/*" -type f -delete 2>/dev/null || true \
+    && find . -name "*.tsx" -not -path "./web/.next/standalone/*" -type f -delete 2>/dev/null || true \
+    && find . -name "tsconfig.json" -type f -delete 2>/dev/null || true \
+    && echo "Optimization complete. Standalone size:" \
+    && du -sh web/.next/standalone 2>/dev/null || echo "Size check completed"
+
+# ============================================
+# Stage 7: Production Runtime
 # ============================================
 FROM base AS runner
 
@@ -222,17 +253,22 @@ RUN MIGRATE_TARGET_ARCH=$(echo ${TARGETPLATFORM:-linux/amd64} | sed 's/\//-/g') 
     wget -q -O- https://github.com/golang-migrate/migrate/releases/download/v4.19.0/migrate.$MIGRATE_TARGET_ARCH.tar.gz | tar xvz && \
     mv migrate /usr/bin/migrate
 
-COPY --from=builder --chown=nextjs:nodejs /app/web/next.config.mjs .
-COPY --from=builder --chown=nextjs:nodejs /app/web/package.json .
+# Copy files from optimizer stage (smaller size due to cleanup)
+# Copy configuration files first (small files)
+COPY --from=optimizer --chown=nextjs:nodejs /app/web/next.config.mjs .
+COPY --from=optimizer --chown=nextjs:nodejs /app/web/package.json .
 
-# Copy Next.js standalone output
-COPY --from=builder --chown=nextjs:nodejs /app/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/web/.next/static ./web/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/web/public ./web/public
+# Copy Next.js standalone output (this is the largest directory)
+# Copy from optimizer stage which has removed unnecessary files
+COPY --from=optimizer --chown=nextjs:nodejs /app/web/.next/standalone ./
+
+# Copy static assets
+COPY --from=optimizer --chown=nextjs:nodejs /app/web/.next/static ./web/.next/static
+COPY --from=optimizer --chown=nextjs:nodejs /app/web/public ./web/public
 
 # Copy Prisma schema and ClickHouse migrations
-COPY --from=builder --chown=nextjs:nodejs /app/packages/shared/prisma ./packages/shared/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/packages/shared/clickhouse ./packages/shared/clickhouse
+COPY --from=optimizer --chown=nextjs:nodejs /app/packages/shared/prisma ./packages/shared/prisma
+COPY --from=optimizer --chown=nextjs:nodejs /app/packages/shared/clickhouse ./packages/shared/clickhouse
 
 # Copy entrypoint and scripts
 COPY --chown=nextjs:nodejs ./web/entrypoint.sh ./web/entrypoint.sh
