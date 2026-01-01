@@ -163,7 +163,25 @@ RUN pnpm audit --audit-level=moderate --production || \
     echo "⚠️ Security vulnerabilities found, review logs"
 
 # ============================================
-# Stage 6: Production Runtime
+# Stage 6: Optimize Build Output (reduce size before export)
+# ============================================
+FROM builder AS optimizer
+
+# Remove all unnecessary files to minimize the size of what we copy to runner
+# This stage exists solely to reduce the size of files copied to runner stage
+RUN rm -rf node_modules \
+    && rm -rf packages/*/node_modules \
+    && rm -rf packages/*/dist \
+    && rm -rf worker/node_modules \
+    && rm -rf .turbo \
+    && find . -name "*.ts" -not -path "./worker/dist/*" -type f -delete 2>/dev/null || true \
+    && find . -name "*.tsx" -not -path "./worker/dist/*" -type f -delete 2>/dev/null || true \
+    && find . -name "tsconfig.json" -type f -delete 2>/dev/null || true \
+    && echo "Optimization complete. Worker dist size:" \
+    && du -sh worker/dist 2>/dev/null || echo "Size check completed"
+
+# ============================================
+# Stage 7: Production Runtime
 # ============================================
 FROM base AS runner
 
@@ -189,8 +207,8 @@ RUN addgroup --system --gid ${GID} expressjs && \
 
 USER expressjs
 
-# Copy built application
-COPY --from=builder --chown=expressjs:expressjs /app .
+# Copy built application from optimizer stage (smaller size due to cleanup)
+COPY --from=optimizer --chown=expressjs:expressjs /app .
 
 # Copy entrypoint script
 COPY --chown=expressjs:expressjs ./worker/entrypoint.sh ./worker/entrypoint.sh

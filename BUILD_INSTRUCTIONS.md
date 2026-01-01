@@ -243,6 +243,7 @@ docker build -f web/Dockerfile -t olegkarenkikh/langfuse_langfuse-web:4 --build-
 Проблема: Ошибка при экспорте образа после успешной сборки:
 ```
 failed to receive status: rpc error: code = Unavailable desc = error reading from server: EOF
+rpc error: code = Unavailable desc = error reading from server: EOF (при resolving provenance)
 ```
 
 Причина: Очень большой размер образа из-за копирования всех файлов из builder stage, включая:
@@ -250,24 +251,45 @@ failed to receive status: rpc error: code = Unavailable desc = error reading fro
 - Исходные TypeScript файлы (`.ts`, `.tsx`)
 - Кэш сборки (`.next/cache`, `.turbo`)
 - Source maps (`.map` файлы)
+- BuildKit пытается создать provenance metadata (SBOM), что вызывает дополнительные проблемы
 
-Решение: Добавлен промежуточный stage `optimizer` в `web/Dockerfile`, который:
-- Удаляет `node_modules` и все зависимости (не нужны, так как Next.js standalone самодостаточен)
-- Удаляет исходные TypeScript файлы (не нужны в production)
-- Удаляет кэш сборки и временные файлы
-- Удаляет source maps (опционально, можно оставить для debugging)
-- Значительно уменьшает размер данных, копируемых в финальный образ
+Решение:
+1. **Добавлен промежуточный stage `optimizer`** в оба Dockerfile (`web/Dockerfile` и `worker/Dockerfile`), который:
+   - Удаляет `node_modules` и все зависимости (не нужны в production)
+   - Удаляет исходные TypeScript файлы (не нужны в production)
+   - Удаляет кэш сборки и временные файлы
+   - Удаляет source maps (опционально, можно оставить для debugging)
+   - Значительно уменьшает размер данных, копируемых в финальный образ
+
+2. **Отключен provenance/SBOM** в `docker-compose.custom.yml`:
+   - Добавлены `provenance: false` и `sbom: false` в секции `build` для обоих сервисов
+   - Это предотвращает ошибки при создании metadata для больших образов
 
 Это предотвращает ошибки EOF при экспорте больших образов и ускоряет процесс сборки.
+
+### 11. Отключение provenance/SBOM для предотвращения ошибок экспорта
+
+Проблема: Ошибка при экспорте образа на этапе "resolving provenance for metadata file":
+```
+target langfuse-worker: rpc error: code = Unavailable desc = error reading from server: EOF
+```
+
+Причина: BuildKit пытается создать provenance metadata (SBOM - Software Bill of Materials) для образа, что требует дополнительных ресурсов и может вызывать ошибки EOF при экспорте больших образов.
+
+Решение:
+- ✅ **ИСПРАВЛЕНО**: Добавлены `provenance: false` и `sbom: false` в секции `build` для обоих сервисов в `docker-compose.custom.yml`
+- Это отключает генерацию provenance metadata и SBOM, что предотвращает ошибки при экспорте
 
 ### Проблема: Ошибка "failed to receive status: rpc error" при экспорте образа
 
 **Решение:**
-- ✅ **ИСПРАВЛЕНО**: Добавлен stage `optimizer` для очистки ненужных файлов перед экспортом
+- ✅ **ИСПРАВЛЕНО**: 
+  - Добавлен stage `optimizer` для очистки ненужных файлов перед экспортом (в обоих Dockerfile)
+  - Отключен provenance/SBOM в docker-compose.custom.yml
 - ⚠️ **ВНИМАНИЕ**: Если ошибка все еще возникает, это может означать, что образ не был сохранен
 - Проверьте наличие образов:
   - Windows PowerShell: `docker images`
-  - Ищите образы с именами `olegkarenkikh/langfuse_langfuse-worker:4` и `olegkarenkikh/langfuse_langfuse-web:4`
+  - Ищите образы с именами `olegkarenkikh/langfuse:worker` и `olegkarenkikh/langfuse:web`
 - Если образы отсутствуют, пересоберите только проблемный сервис:
   ```bash
   # Пересобрать только web
@@ -297,10 +319,10 @@ docker images | grep olegkarenkikh/langfuse
 ```
 
 Должны быть созданы:
-- `olegkarenkikh/langfuse_langfuse-worker:4`
-- `olegkarenkikh/langfuse_langfuse-web:4`
+- `olegkarenkikh/langfuse:worker`
+- `olegkarenkikh/langfuse:web`
 
-**Примечание:** Если в конце сборки появляется ошибка `failed to receive status: rpc error: code = Unavailable desc = error reading from server: EOF`, это не критично - это проблема с экспортом больших образов, но сами образы уже собраны. Проверьте наличие образов командой выше.
+**Примечание:** Если в конце сборки появляется ошибка `failed to receive status: rpc error: code = Unavailable desc = error reading from server: EOF`, это не критично - это проблема с экспортом больших образов, но сами образы уже собраны. Проверьте наличие образов командой выше. С отключенным provenance/SBOM и оптимизацией размера образов эти ошибки должны возникать реже.
 
 ## Запуск собранных контейнеров
 
