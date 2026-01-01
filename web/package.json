@@ -7,8 +7,8 @@
     "node": "24"
   },
   "scripts": {
-    "build": "INLINE_RUNTIME_CHUNK=false next build",
-    "build:local": "INLINE_RUNTIME_CHUNK=false dotenv -e ../.env -- next build",
+    "build": "INLINE_RUNTIME_CHUNK=false TURBOPACK=0 next build",
+    "build:local": "INLINE_RUNTIME_CHUNK=false TURBOPACK=0 dotenv -e ../.env -- next build",
     "dev": "dotenv -e ../.env -- next dev --turbopack",
     "dev:http": "dotenv -e ../.env -- next dev --experimental-https --experimental-https-key ./localhost+1-key.pem --experimental-https-cert ./localhost+1.pem",
     "lint": "dotenv -e ../.env -- next lint --max-warnings 0",

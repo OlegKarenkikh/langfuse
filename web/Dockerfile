@@ -189,8 +189,12 @@ RUN echo "=== Build Environment Check ===" && \
     echo "=== Starting build ==="
 
 # Build with detailed error logging for debugging
-# Run build with output to both console and log file, then check exit code
-RUN turbo run build --filter=web... 2>&1 | tee /tmp/build.log; \
+# Disable Turbopack for production build (Turbopack doesn't support standalone output)
+# Use Webpack instead which properly supports output: "standalone"
+RUN echo "=== Starting Next.js build with Webpack (Turbopack disabled for standalone output) ===" && \
+    NODE_OPTIONS='--max-old-space-size=3072' \
+    TURBOPACK=0 \
+    turbo run build --filter=web... 2>&1 | tee /tmp/build.log; \
     BUILD_EXIT_CODE=$?; \
     if [ $BUILD_EXIT_CODE -ne 0 ]; then \
         echo "" && \
@@ -220,28 +224,34 @@ RUN turbo run build --filter=web... 2>&1 | tee /tmp/build.log; \
         (grep -i "compiled\|build.*complete\|standalone" /tmp/build.log | tail -10 || echo "No build completion message found"); \
     fi
 
-# Verify Next.js build completed successfully
-RUN echo "=== Verifying Next.js build output ===" && \
-    echo "Checking if web/.next exists:" && \
-    ls -la web/.next/ 2>/dev/null || (echo "❌ web/.next directory not found" && exit 1) && \
-    echo "" && \
-    echo "Checking standalone directory structure:" && \
-    ls -la web/.next/standalone/ 2>/dev/null || (echo "❌ web/.next/standalone directory not found" && exit 1) && \
-    echo "" && \
-    echo "Checking for server.js:" && \
-    if [ -f "web/.next/standalone/web/server.js" ]; then \
-        echo "✅ Found: web/.next/standalone/web/server.js" && \
-        ls -lh web/.next/standalone/web/server.js; \
-    elif [ -f "web/.next/standalone/server.js" ]; then \
-        echo "✅ Found: web/.next/standalone/server.js (alternative location)" && \
-        ls -lh web/.next/standalone/server.js; \
-    else \
-        echo "❌ server.js not found in expected locations" && \
-        echo "Contents of web/.next/standalone:" && \
-        find web/.next/standalone -type f -name "*.js" | head -20 || echo "No .js files found" && \
+# Verify Next.js standalone output was created
+RUN echo "=== Verifying Next.js standalone output ===" && \
+    if [ -d "web/.next/standalone" ]; then \
+        echo "✅ Standalone directory exists" && \
+        ls -la web/.next/standalone/ && \
         echo "" && \
-        echo "Full directory tree:" && \
-        find web/.next/standalone -type d | head -30 || echo "Directory listing failed" && \
+        echo "Checking for server.js:" && \
+        if [ -f "web/.next/standalone/web/server.js" ]; then \
+            echo "✅ Found server.js at: web/.next/standalone/web/server.js" && \
+            ls -lh web/.next/standalone/web/server.js; \
+        elif [ -f "web/.next/standalone/server.js" ]; then \
+            echo "✅ Found server.js at: web/.next/standalone/server.js" && \
+            ls -lh web/.next/standalone/server.js; \
+        else \
+            echo "❌ server.js not found in expected locations!" && \
+            echo "Searching for server.js:" && \
+            find web/.next/standalone -name "server.js" -type f 2>/dev/null | head -10 || echo "No server.js found" && \
+            echo "Contents of web/.next/standalone:" && \
+            find web/.next/standalone -type f -name "*.js" | head -20 || echo "No .js files found" && \
+            exit 1; \
+        fi; \
+    else \
+        echo "❌ Standalone directory not created!" && \
+        echo "Next.js output structure:" && \
+        ls -la web/.next/ && \
+        echo "" && \
+        echo "Checking build log for standalone-related messages:" && \
+        (grep -i "standalone\|output\|turbopack\|webpack" /tmp/build.log | tail -20 || echo "No relevant messages found") && \
         exit 1; \
     fi
 

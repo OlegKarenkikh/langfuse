@@ -106,6 +106,21 @@ x Internal errors encountered: external process killed a task
 - Установлен `NODE_ENV=production` для дополнительной оптимизации памяти во время сборки.
 - Исправлена синтаксическая ошибка в проверке кода выхода сборки: используется простая проверка `$?` вместо `${PIPESTATUS[0]}` (работает в `/bin/sh`).
 
+### 8. Исправлена проблема с отсутствием standalone output в Next.js 16
+
+Проблема: Next.js 16 с Turbopack игнорирует `output: "standalone"` в production build, что приводит к отсутствию директории `web/.next/standalone` после сборки:
+```
+❌ web/.next/standalone directory not found
+```
+
+Причина: Turbopack (новый бандлер Next.js 16) не поддерживает standalone output. Next.js автоматически использует Turbopack для production сборки, игнорируя настройку `output: "standalone"` в `next.config.mjs`.
+
+Решение:
+- Добавлена переменная окружения `TURBOPACK=0` в `web/Dockerfile` для принудительного отключения Turbopack во время сборки
+- Обновлен build скрипт в `web/package.json` для явного отключения Turbopack (`TURBOPACK=0`)
+- Теперь Next.js использует Webpack для production сборки, который правильно поддерживает `output: "standalone"`
+- Standalone output теперь создается корректно в `web/.next/standalone/`
+
 **КРИТИЧЕСКИ ВАЖНО:** Для успешной сборки web приложения требуется:
 - **Минимум 8GB доступной RAM на хосте**
 - **Минимум 6GB памяти, выделенной для Docker Desktop**
@@ -227,6 +242,26 @@ docker build -f web/Dockerfile -t olegkarenkikh/langfuse_langfuse-web:4 --build-
   4. Используйте более мощную машину для сборки (рекомендуется 16GB+ RAM)
   5. Рассмотрите возможность сборки на удаленной машине или CI/CD с большим объемом памяти
   6. Текущий лимит памяти установлен на 3GB (`--max-old-space-size=3072`). Если проблема повторяется, убедитесь, что Docker Desktop имеет минимум 8GB выделенной памяти
+
+### Проблема: Standalone output не создается в Next.js 16 (Turbopack игнорирует output: standalone)
+
+**Симптомы:**
+- Сборка завершается успешно, но директория `web/.next/standalone` не создается
+- Ошибка: `❌ web/.next/standalone directory not found`
+- В логах видно, что Next.js использует Turbopack для сборки
+
+**Причина:** Next.js 16 по умолчанию использует Turbopack для production сборки, который не поддерживает `output: "standalone"`. Настройка `output: "standalone"` в `next.config.mjs` игнорируется при использовании Turbopack.
+
+**Решение:**
+- ✅ **ИСПРАВЛЕНО**: Добавлена переменная окружения `TURBOPACK=0` в `web/Dockerfile` для принудительного отключения Turbopack во время production сборки
+- ✅ **ИСПРАВЛЕНО**: Обновлен build скрипт в `web/package.json` для явного отключения Turbopack (`TURBOPACK=0 next build`)
+- Теперь Next.js использует Webpack для production сборки, который правильно поддерживает `output: "standalone"`
+- Standalone output теперь создается корректно в `web/.next/standalone/`
+
+**Важно:** 
+- Turbopack отключен только для production сборки в Docker
+- Для development режима Turbopack продолжает использоваться (это нормально)
+- Webpack сборка может быть немного медленнее, но обеспечивает корректное создание standalone output
 
 ### Проблема: Ошибки "Module not found" для @emotion, react-resizable или Prisma Client
 
