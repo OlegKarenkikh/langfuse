@@ -166,9 +166,9 @@ RUN if find node_modules -name ".prisma" -type d 2>/dev/null | head -1 | grep -q
     fi
 
 # Build web application with optimized memory settings
-# Use 3GB memory limit - smaller limit can work better if system can't allocate large chunks
+# Use 1.5GB memory limit - smaller limit can work better if system can't allocate large chunks
 # Also set Next.js build optimizations to reduce memory usage
-ENV NODE_OPTIONS='--max-old-space-size=3072'
+ENV NODE_OPTIONS='--max-old-space-size=1536'
 ENV NEXT_BUILD_OPTIMIZE=1
 RUN turbo run build --filter=web...
 
