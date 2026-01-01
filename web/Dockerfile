@@ -168,9 +168,12 @@ RUN if find node_modules -name ".prisma" -type d 2>/dev/null | head -1 | grep -q
 # Build web application with optimized memory settings
 # Use 1.5GB memory limit - smaller limit can work better if system can't allocate large chunks
 # Also set Next.js build optimizations to reduce memory usage
-# Increased memory limit to 2GB to prevent ResourceExhausted errors during build
-ENV NODE_OPTIONS='--max-old-space-size=2048'
+# Increased memory limit to 3GB to prevent ResourceExhausted errors during build
+# Note: This requires at least 8GB RAM on the host and 6GB+ allocated to Docker Desktop
+ENV NODE_OPTIONS='--max-old-space-size=3072'
 ENV NEXT_BUILD_OPTIMIZE=1
+# Additional optimizations to reduce memory usage during build
+ENV NODE_ENV=production
 
 # Verify environment before build
 RUN echo "=== Build Environment Check ===" && \
@@ -186,13 +189,13 @@ RUN echo "=== Build Environment Check ===" && \
     echo "=== Starting build ==="
 
 # Build with detailed error logging for debugging
-# Use bash for PIPESTATUS support, and check exit code properly
-RUN set -o pipefail && \
-    turbo run build --filter=web... 2>&1 | tee /tmp/build.log; \
-    BUILD_EXIT_CODE=$? && \
-    echo "=== Build completed with exit code: $BUILD_EXIT_CODE ===" && \
+# Run build with output to both console and log file, then check exit code
+RUN turbo run build --filter=web... 2>&1 | tee /tmp/build.log; \
+    BUILD_EXIT_CODE=$?; \
     if [ $BUILD_EXIT_CODE -ne 0 ]; then \
-        echo "❌ Build failed with exit code $BUILD_EXIT_CODE. Showing last 200 lines of build log:" && \
+        echo "" && \
+        echo "❌ Build failed with exit code $BUILD_EXIT_CODE" && \
+        echo "Showing last 200 lines of build log:" && \
         tail -200 /tmp/build.log && \
         echo "" && \
         echo "=== Error summary ===" && \
@@ -207,6 +210,7 @@ RUN set -o pipefail && \
         ls -la packages/shared/ 2>/dev/null | head -5 || echo "packages/shared not found" && \
         exit 1; \
     else \
+        echo "" && \
         echo "✅ Build command completed successfully" && \
         echo "Checking build output..." && \
         echo "Last 50 lines of build log:" && \
