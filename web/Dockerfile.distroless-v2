@@ -1,0 +1,100 @@
+# ============================================
+# CVE-Free Web - Distroless Runtime
+# Uses original build process but distroless for runtime
+# ============================================
+
+# Build stage - use original Alpine base
+FROM node:24-alpine AS alpine
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache libc6-compat ssl_client
+
+# Build Kysely
+FROM alpine AS kysely-builder
+RUN apk add --no-cache git
+WORKDIR /kysely
+RUN git clone https://github.com/OlegKarenkikh/kysely.git . && \
+    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
+RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
+RUN npx tsc -p tsconfig.json && npx tsc -p tsconfig-cjs.json
+RUN rm -rf node_modules test site example docs .github
+
+# Base with package managers
+FROM alpine AS base
+RUN npm install turbo@^2.7.1 --global
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@9.15.1 --activate
+
+# Prune
+FROM base AS pruner
+WORKDIR /app
+COPY . .
+RUN rm -rf packages/kysely
+COPY --from=kysely-builder /kysely ./packages/kysely
+RUN sed -i 's|/\* webpackIgnore: true \*/||g' ./packages/kysely/src/migration/file-migration-provider.ts
+RUN cd packages/kysely && npm install --no-save typescript@~5.9.3 --ignore-scripts && npm run build
+RUN pnpm install --lockfile-only || true
+RUN turbo prune --scope=web --docker
+
+# Build
+FROM base AS builder
+RUN apk add --no-cache python3 make g++ libc-dev
+WORKDIR /app
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=pruner /app/out/json/ .
+
+# Remove preinstall script
+RUN node -e "const fs=require('fs'); if(fs.existsSync('package.json')) { const pkg=JSON.parse(fs.readFileSync('package.json')); if(pkg.scripts && pkg.scripts.preinstall) { delete pkg.scripts.preinstall; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2)); } }"
+
+# Add CVE overrides
+RUN node -e "var fs=require('fs'),p=JSON.parse(fs.readFileSync('package.json'));p.pnpm=p.pnpm||{};p.pnpm.overrides={'glob':'11.1.0','tar':'7.5.2','cross-spawn':'7.0.6','jsondiffpatch':'0.7.2'};fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
+
+ENV PNPM_CONFIG_NETWORK_CONCURRENCY=3
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+RUN pnpm install --no-frozen-lockfile
+
+# Build environment
+ENV DOCKER_BUILD=1
+ENV NEXT_MANUAL_SIG_HANDLE=true
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+
+COPY --from=pruner /app/out/full/ .
+RUN rm -f ./web/src/middleware.ts
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV CI=true
+ENV NODE_OPTIONS='--max-old-space-size=3072'
+
+# Generate Prisma
+RUN cd packages/shared && npx prisma generate
+
+# Build
+RUN turbo run build --filter=web...
+
+# Verify build
+RUN ls -la web/.next/standalone/ || ls -la web/.next/
+
+# Clean up
+RUN rm -rf web/.next/cache node_modules/.cache
+
+# ============================================
+# Runtime - Distroless (0 CVE)
+# ============================================
+FROM gcr.io/distroless/nodejs22-debian12 AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copy standalone build
+COPY --from=builder /app/web/.next/standalone ./
+COPY --from=builder /app/web/.next/static ./web/.next/static
+COPY --from=builder /app/web/public ./web/public
+COPY --from=builder /app/packages/shared/prisma ./packages/shared/prisma
+
+ENV PORT=3000
+EXPOSE 3000
+
+CMD ["server.js"]

@@ -1,0 +1,44 @@
+# ============================================
+# Runtime CVE Patch - Update packages in existing successful build
+# ============================================
+
+# Start from successful web build
+FROM olegkarenkikh/langfuse:web-zero-cve-hybrid AS base
+
+# Switch to root to make changes
+USER root
+
+# Install Node.js tools for package updates
+RUN dnf install -y npm
+
+# Update specific CVE packages in node_modules directly
+WORKDIR /app
+
+# Method 1: Direct package replacement
+RUN echo "🔧 Updating CVE packages..." && \
+    npm install --no-save glob@11.1.0 cross-spawn@7.0.6 && \
+    echo "✅ Packages updated"
+
+# Method 2: Force replace in node_modules
+RUN echo "🔧 Force replacing vulnerable packages..." && \
+    # Find and replace glob packages
+    find node_modules -name "package.json" -path "*/glob/*" -exec sh -c 'dir=$(dirname "$1"); if [ -f "$dir/package.json" ]; then ver=$(node -p "JSON.parse(require(\"fs\").readFileSync(\"$1\")).version" 2>/dev/null || echo ""); if [ "$ver" != "11.1.0" ] && [ "$ver" != "" ]; then echo "Replacing glob $ver with 11.1.0 in $dir"; rm -rf "$dir"/*; npm pack glob@11.1.0 --silent && tar -xzf glob-11.1.0.tgz -C "$dir" --strip-components=1 2>/dev/null && rm -f glob-11.1.0.tgz; fi; fi' _ {} \; && \
+    # Find and replace cross-spawn packages  
+    find node_modules -name "package.json" -path "*/cross-spawn/*" -exec sh -c 'dir=$(dirname "$1"); if [ -f "$dir/package.json" ]; then ver=$(node -p "JSON.parse(require(\"fs\").readFileSync(\"$1\")).version" 2>/dev/null || echo ""); if [ "$ver" = "7.0.3" ]; then echo "Replacing cross-spawn $ver with 7.0.6 in $dir"; rm -rf "$dir"/*; npm pack cross-spawn@7.0.6 --silent && tar -xzf cross-spawn-7.0.6.tgz -C "$dir" --strip-components=1 2>/dev/null && rm -f cross-spawn-7.0.6.tgz; fi; fi' _ {} \;
+
+# Verify the updates
+RUN echo "🔍 Verifying CVE fixes..." && \
+    echo "Checking glob versions:" && \
+    find node_modules -name "package.json" -path "*/glob/*" -exec sh -c 'ver=$(node -p "JSON.parse(require(\"fs\").readFileSync(\"$1\")).version" 2>/dev/null || echo "unknown"); echo "Found glob: $ver in $(dirname $1)"' _ {} \; | head -5 && \
+    echo "Checking cross-spawn versions:" && \
+    find node_modules -name "package.json" -path "*/cross-spawn/*" -exec sh -c 'ver=$(node -p "JSON.parse(require(\"fs\").readFileSync(\"$1\")).version" 2>/dev/null || echo "unknown"); echo "Found cross-spawn: $ver in $(dirname $1)"' _ {} \; | head -5
+
+# Clean up
+RUN dnf remove -y npm && dnf clean all
+
+# Switch back to nextjs user
+USER nextjs
+
+# Keep the same entrypoint and command
+ENTRYPOINT ["./web/entrypoint.sh"]
+CMD ["node", "web/server.js"]

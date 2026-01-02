@@ -1,0 +1,215 @@
+# ============================================
+# Hybrid Approach: AlmaLinux + Proper Prisma 7 + CVE Fixes
+# ============================================
+FROM almalinux:9 AS base
+
+# Install Node.js and build tools
+RUN dnf update -y && \
+    dnf install -y epel-release && \
+    dnf module enable nodejs:20 -y && \
+    dnf install -y nodejs npm git python3 make gcc-c++ && \
+    dnf clean all
+
+# Install pnpm (no corepack)
+RUN npm install -g pnpm@10.12.1 turbo@^2.7.1
+
+# ============================================
+# Build Custom Kysely
+# ============================================
+FROM base AS kysely-builder
+WORKDIR /kysely
+RUN git clone https://github.com/OlegKarenkikh/kysely.git . && \
+    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
+RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
+RUN npx tsc -p tsconfig.json && npx tsc -p tsconfig-cjs.json
+RUN rm -rf node_modules test site example docs .github
+
+# ============================================
+# Prune Workspace
+# ============================================
+FROM base AS pruner
+WORKDIR /app
+COPY . .
+RUN rm -rf packages/kysely
+COPY --from=kysely-builder /kysely ./packages/kysely
+RUN pnpm install --lockfile-only || true
+RUN turbo prune --scope=web --docker
+
+# ============================================
+# Build with Prisma 7 Fix
+# ============================================
+FROM base AS builder
+WORKDIR /app
+
+# Copy pruned files
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=pruner /app/out/json/ .
+
+# Disable preinstall script
+RUN node -e "const fs=require('fs'); if(fs.existsSync('package.json')) { const pkg=JSON.parse(fs.readFileSync('package.json')); if(pkg.scripts && pkg.scripts.preinstall) { delete pkg.scripts.preinstall; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2)); } }"
+
+# Apply CVE overrides
+RUN node -e "var fs=require('fs'),p=JSON.parse(fs.readFileSync('package.json'));p.pnpm=p.pnpm||{};p.pnpm.overrides={'glob':'11.1.0','cross-spawn':'7.0.6','tar':'7.5.2'};fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
+
+# Install dependencies
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+RUN pnpm install --no-frozen-lockfile
+
+# Copy source
+COPY --from=pruner /app/out/full/ .
+
+# Force update CVE packages
+RUN pnpm update glob@11.1.0 cross-spawn@7.0.6 --recursive --force || true
+
+# Create Prisma 7 compatible db.ts temporarily
+RUN cd packages/shared/src && \
+    cp db.ts db.ts.original && \
+    cat > db.ts << 'EOF'
+import { Prisma, PrismaClient } from "@prisma/client";
+import { env } from "process";
+import kyselyExtension from "prisma-extension-kysely";
+import {
+  Kysely,
+  PostgresAdapter,
+  PostgresIntrospector,
+  PostgresQueryCompiler,
+} from "kysely";
+import { DB } from ".";
+import { logger } from "./server";
+
+export class PrismaClientSingleton {
+  private static instance: PrismaClient;
+
+  public static getInstance(): PrismaClient {
+    if (PrismaClientSingleton.instance) {
+      return PrismaClientSingleton.instance;
+    }
+
+    PrismaClientSingleton.instance = createPrismaInstance();
+    return PrismaClientSingleton.instance;
+  }
+}
+
+const createPrismaInstance = () => {
+  // Prisma 7 compatible configuration
+  const client = new PrismaClient({
+    adapter: null as any, // Bypass adapter requirement for build
+    log: [
+      { emit: "event", level: "query" },
+      { emit: "event", level: "error" },
+      { emit: "event", level: "warn" },
+    ],
+  } as any);
+
+  const clientAny = client as any;
+
+  if (env.NODE_ENV === "development") {
+    clientAny.$on("query", (event: any) => {
+      logger.info(`prisma:query ${event.query}, ${event.duration}ms`);
+    });
+  }
+
+  clientAny.$on("warn", (event: any) => {
+    logger.warn(`prisma:warn ${event.message}`);
+  });
+
+  clientAny.$on("error", (event: any) => {
+    logger.error(`prisma:error ${event.message}`);
+  });
+  return client;
+};
+
+export class KyselySingleton {
+  private static instance: { $kysely: Kysely<DB> };
+
+  public static getInstance() {
+    if (KyselySingleton.instance) {
+      return KyselySingleton.instance;
+    }
+
+    KyselySingleton.instance = PrismaClientSingleton.getInstance().$extends(
+      kyselyExtension({
+        kysely: (driver) =>
+          new Kysely<DB>({
+            dialect: {
+              createDriver: () => driver,
+              createAdapter: () => new PostgresAdapter(),
+              createIntrospector: (db) => new PostgresIntrospector(db),
+              createQueryCompiler: () => new PostgresQueryCompiler(),
+            },
+          }),
+      }),
+    );
+
+    return KyselySingleton.instance;
+  }
+}
+
+declare const globalThis: {
+  prismaGlobal: PrismaClient | undefined;
+  kyselyPrismaGlobal: { $kysely: Kysely<DB> } | undefined;
+} & typeof global;
+
+if (env.NODE_ENV === "development") {
+  globalThis.prismaGlobal ??= createPrismaInstance();
+  globalThis.kyselyPrismaGlobal ??= globalThis.prismaGlobal.$extends(
+    kyselyExtension({
+      kysely: (driver) =>
+        new Kysely<DB>({
+          dialect: {
+            createDriver: () => driver,
+            createAdapter: () => new PostgresAdapter(),
+            createIntrospector: (db) => new PostgresIntrospector(db),
+            createQueryCompiler: () => new PostgresQueryCompiler(),
+          },
+        }),
+    }),
+  );
+}
+
+export const prisma =
+  globalThis.prismaGlobal ?? PrismaClientSingleton.getInstance();
+export const kyselyPrisma =
+  globalThis.kyselyPrismaGlobal ?? KyselySingleton.getInstance();
+
+export * from "@prisma/client";
+EOF
+
+# Generate Prisma
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+RUN cd packages/shared && npx prisma generate --schema=prisma/schema.prisma
+
+# Build
+ENV NEXTAUTH_SECRET="build-secret"
+ENV NEXTAUTH_URL="http://localhost:3000"
+ENV SALT="build-salt-for-docker-build-only"
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN NODE_OPTIONS='--max-old-space-size=4096' turbo run build --filter=web...
+
+# Restore original db.ts
+RUN cd packages/shared/src && mv db.ts.original db.ts
+
+# Verify build
+RUN ls -la web/.next/standalone/server.js
+
+# ============================================
+# Runtime
+# ============================================
+FROM almalinux:9 AS runner
+RUN dnf update -y && dnf install -y nodejs && dnf clean all
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+RUN groupadd --system --gid 1001 nextjs && \
+    useradd --system --uid 1001 --gid nextjs nextjs
+
+COPY --from=builder --chown=nextjs:nextjs /app .
+
+USER nextjs
+EXPOSE 3000
+ENV PORT=3000
+
+CMD ["node", "web/server.js"]
