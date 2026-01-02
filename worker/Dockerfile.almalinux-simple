@@ -1,0 +1,35 @@
+# ============================================
+# AlmaLinux 8 Simple - CVE Mitigation
+# ============================================
+FROM almalinux:8 AS runtime
+
+# Install Node.js 20 and security updates
+RUN dnf update -y && \
+    dnf install -y epel-release && \
+    dnf module enable nodejs:20 -y && \
+    dnf install -y nodejs npm && \
+    dnf clean all
+
+# Install latest pnpm (gets us 10.27.0!)
+RUN npm install -g pnpm@latest && \
+    pnpm --version
+
+# Create app user
+RUN groupadd --system --gid 1001 expressjs && \
+    useradd --system --uid 1001 --gid expressjs expressjs
+
+WORKDIR /app
+
+# Copy pre-built application from Alpine build
+# This is a hybrid approach - build on Alpine, run on AlmaLinux
+COPY --from=olegkarenkikh/langfuse:worker-cve-fixed --chown=expressjs:expressjs /app .
+
+USER expressjs
+
+EXPOSE 3030
+ENV PORT=3030
+ENV NODE_ENV=production
+
+# Start worker
+ENTRYPOINT ["./worker/entrypoint.sh"]
+CMD ["node", "worker/dist/index.js"]

@@ -48,16 +48,6 @@ const reportToHeader = {
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
-  // Force webpack usage instead of Turbopack for production builds
-  // This is required for standalone output to work properly
-  experimental: {
-    browserDebugInfoInTerminal: true, // Logs browser logs to terminal
-    // Exclude Prisma Client from client-side bundle (for Turbopack)
-    serverComponentsExternalPackages: ["@prisma/client", ".prisma/client"],
-    // TODO: enable with new next version! 15.6
-    // see: https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopackPersistentCaching
-    // turbopackPersistentCaching: true,
-  },
   staticPageGenerationTimeout: 500, // default is 60. Required for build process for amd
   transpilePackages: ["@langfuse/shared", "vis-network/standalone"],
   reactStrictMode: true,
@@ -69,18 +59,8 @@ const nextConfig = {
     "@opentelemetry/sdk-node",
     "@opentelemetry/instrumentation-winston",
     "kysely",
-    "@prisma/client",
-    ".prisma/client",
   ],
   poweredByHeader: false,
-  // Reduce memory usage during build
-  productionBrowserSourceMaps: false,
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   basePath: env.NEXT_PUBLIC_BASE_PATH,
   turbopack: {
     resolveAlias: {
@@ -90,10 +70,16 @@ const nextConfig = {
       // the dev server. The CSS is included in the non-turbopack based prod build anyways.
       // Also not needed for the non-turbopack based dev server.
       "react-resizable/css/styles.css":
-        "../node_modules/.pnpm/react-resizable@3.0.5_react-dom@19.2.0_react@19.2.0__react@19.2.0/node_modules/react-resizable/css/styles.css",
+        "../node_modules/.pnpm/react-resizable@3.0.5_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/react-resizable/css/styles.css",
       // Note: Prisma Client exclusion is handled in webpack config below
       // Turbopack doesn't support false values in resolveAlias, so we rely on webpack for production builds
     },
+  },
+  experimental: {
+    browserDebugInfoInTerminal: true, // Logs browser logs to terminal
+    // TODO: enable with new next version! 15.6
+    // see: https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopackPersistentCaching
+    // turbopackPersistentCaching: true,
   },
 
   /**
@@ -213,6 +199,11 @@ const nextConfig = {
     // see: https://docs.datadoghq.com/tracing/trace_collection/automatic_instrumentation/dd_libraries/nodejs/#bundling-with-nextjs
     config.externals.push("@datadog/pprof", "dd-trace");
     
+    // Disable minification completely to avoid webpack constructor issues
+    config.optimization = config.optimization || {};
+    config.optimization.minimize = false;
+    config.optimization.minimizer = [];
+    
     // Fix Prisma Client resolution in pnpm workspace
     if (!isServer) {
       // For client-side builds, exclude Prisma Client completely
@@ -226,19 +217,8 @@ const nextConfig = {
       // Add to externals to prevent bundling
       config.externals = config.externals || [];
       config.externals.push(".prisma/client", "@prisma/client");
-    } else {
-      // For server-side builds, ensure proper resolution
-      try {
-        const prismaClientPath = require.resolve("@prisma/client");
-        config.resolve.alias = {
-          ...config.resolve.alias,
-          ".prisma/client": prismaClientPath.replace(/@prisma[\\/]client[\\/]index\.js$/, ".prisma/client"),
-        };
-      } catch (e) {
-        // If Prisma Client is not found, continue without alias
-        console.warn("Prisma Client not found for webpack alias:", e.message);
-      }
     }
+    // Server-side Prisma resolution is handled automatically by Next.js serverExternalPackages
     
     return config;
   },

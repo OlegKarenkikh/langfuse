@@ -1,0 +1,99 @@
+# ============================================
+# Node.js 24 Alpine Minimal - CVE Optimized
+# ============================================
+FROM node:24-alpine AS base
+
+# Update Alpine packages
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache git python3 make g++
+
+# Use pnpm 10 (fixes CVE-2024-47829)
+RUN corepack enable && corepack prepare pnpm@10.27.0 --activate
+RUN pnpm --version
+
+# Install turbo
+RUN npm install turbo@^2.7.1 --global
+
+# ============================================
+# Stage 2: Build Kysely
+# ============================================
+FROM base AS kysely-builder
+
+WORKDIR /kysely
+RUN git clone https://github.com/OlegKarenkikh/kysely.git . && \
+    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
+RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
+RUN npx tsc -p tsconfig.json && npx tsc -p tsconfig-cjs.json
+RUN rm -rf node_modules test site example docs .github
+
+# ============================================
+# Stage 3: Prune
+# ============================================
+FROM base AS pruner
+
+WORKDIR /app
+COPY . .
+RUN rm -rf packages/kysely
+COPY --from=kysely-builder /kysely ./packages/kysely
+
+RUN node -e "const fs=require('fs'); \
+    const pkg=JSON.parse(fs.readFileSync('package.json')); \
+    if(pkg.scripts?.preinstall) delete pkg.scripts.preinstall; \
+    fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+
+RUN pnpm install --lockfile-only || true
+RUN turbo prune --scope=worker --docker
+
+# ============================================
+# Stage 4: Build
+# ============================================
+FROM base AS builder
+
+WORKDIR /app
+
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=pruner /app/out/json/ .
+
+RUN node -e "const fs=require('fs'); \
+    const pkg=JSON.parse(fs.readFileSync('package.json')); \
+    if(pkg.scripts?.preinstall) delete pkg.scripts.preinstall; \
+    fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+RUN pnpm install --no-frozen-lockfile
+
+COPY --from=pruner /app/out/full/ .
+
+# Generate Prisma
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+RUN cd packages/shared && npx prisma generate --schema=prisma/schema.prisma
+
+# Build
+RUN NODE_OPTIONS='--max-old-space-size=1536' turbo run build --filter=worker...
+
+# ============================================
+# Stage 5: Runtime
+# ============================================
+FROM node:24-alpine AS runner
+
+RUN apk update && apk upgrade --no-cache
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+RUN addgroup -g 1001 -S expressjs && adduser -S expressjs -u 1001
+
+COPY --from=builder --chown=expressjs:expressjs /app .
+
+RUN echo '#!/bin/sh' > ./worker/entrypoint.sh && \
+    echo 'exec "$@"' >> ./worker/entrypoint.sh && \
+    chmod +x ./worker/entrypoint.sh
+
+USER expressjs
+EXPOSE 3030
+ENV PORT=3030
+
+ENTRYPOINT ["./worker/entrypoint.sh"]
+CMD ["node", "worker/dist/index.js"]

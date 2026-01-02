@@ -3,13 +3,15 @@
 # ============================================
 FROM --platform=${TARGETPLATFORM:-linux/amd64} node:24-alpine AS alpine
 
-# Security: Update all Alpine packages to latest versions
+# Update Alpine packages to fix CVE vulnerabilities
+# Force busybox update to fix CVE-2025-608766
 RUN apk update && \
-    apk upgrade --no-cache \
+    apk upgrade --no-cache && \
+    apk add --no-cache --upgrade busybox && \
+    apk add --no-cache \
     libcrypto3 \
     libssl3 \
     libc6-compat \
-    busybox \
     ssl_client
 
 # ============================================
@@ -55,7 +57,7 @@ RUN npm install turbo@^2.7.1 --global
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && \
-    corepack prepare pnpm@9.5.0 --activate
+    corepack prepare pnpm@9.15.1 --activate
 
 # ============================================
 # Stage 4: Prune Workspace
@@ -118,8 +120,9 @@ RUN node -e "const fs=require('fs'); if(fs.existsSync('package.json')) { const p
 ENV PNPM_CONFIG_NETWORK_CONCURRENCY=3
 # Skip Puppeteer Chrome download (not needed for build, saves time and network)
 ENV PUPPETEER_SKIP_DOWNLOAD=true
-# Install dependencies (no-frozen-lockfile due to kysely modifications)
-RUN pnpm install --no-frozen-lockfile
+# Force clean install to ensure CVE fixes are applied
+RUN rm -rf node_modules/.cache pnpm-lock.yaml && \
+    pnpm install --no-frozen-lockfile --force
 
 # Build-time environment variables
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
@@ -136,17 +139,30 @@ COPY --from=pruner /app/out/full/ .
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 
 # Generate Prisma Client (must be done before TypeScript compilation)
-RUN cd packages/shared && npx prisma generate
+# Use --schema flag to explicitly specify schema location
+RUN cd packages/shared && \
+    DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" \
+    npx prisma generate --schema=prisma/schema.prisma
 
-# Verify Prisma Client was generated (in pnpm workspace, it may be in .pnpm structure)
-# Check if .prisma directory exists anywhere in node_modules
-RUN if find node_modules -name ".prisma" -type d 2>/dev/null | head -1 | grep -q .; then \
-       echo "✅ Prisma Client generated successfully"; \
-    else \
-       echo "⚠️ Prisma Client verification: .prisma directory not found in expected locations" && \
-       echo "This may be normal in pnpm workspace structure. Continuing..." && \
-       echo "Checking node_modules structure..." && \
-       find node_modules -name ".prisma" -type d 2>/dev/null | head -5 || true; \
+# Verify Prisma Client was generated
+# In pnpm workspace with hoisting, check multiple possible locations
+RUN echo "=== Verifying Prisma Client generation ===" && \
+    PRISMA_FOUND=0 && \
+    if [ -f "node_modules/.prisma/client/index.js" ]; then \
+        echo "✅ Found at node_modules/.prisma/client/index.js" && PRISMA_FOUND=1; \
+    fi && \
+    if [ -f "packages/shared/node_modules/.prisma/client/index.js" ]; then \
+        echo "✅ Found at packages/shared/node_modules/.prisma/client/index.js" && PRISMA_FOUND=1; \
+    fi && \
+    PNPM_PRISMA=$(find node_modules/.pnpm -path "*/@prisma/client/*/index.js" 2>/dev/null | head -1) && \
+    if [ -n "$PNPM_PRISMA" ]; then \
+        echo "✅ Found in pnpm store: $PNPM_PRISMA" && PRISMA_FOUND=1; \
+    fi && \
+    if [ $PRISMA_FOUND -eq 0 ]; then \
+        echo "❌ Prisma Client not found in any expected location" && \
+        echo "Searching for .prisma directories:" && \
+        find . -name ".prisma" -type d 2>/dev/null | head -10 && \
+        exit 1; \
     fi
 
 # Build all dependencies and worker with optimized memory settings

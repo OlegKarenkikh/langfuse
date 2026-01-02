@@ -1,0 +1,46 @@
+# ============================================
+# AlmaLinux 9 Fixed - CVE Mitigation
+# ============================================
+FROM almalinux:9 AS runtime
+
+# Install Node.js and security updates
+RUN dnf update -y && \
+    dnf install -y epel-release && \
+    dnf module enable nodejs:20 -y && \
+    dnf install -y nodejs npm && \
+    dnf clean all
+
+# Update pnpm to latest version (should get us 10.x)
+RUN npm install -g pnpm@latest && \
+    echo "Node version: $(node --version)" && \
+    echo "npm version: $(npm --version)" && \
+    echo "pnpm version: $(pnpm --version)"
+
+# Create app user
+RUN groupadd --system --gid 1001 expressjs && \
+    useradd --system --uid 1001 --gid expressjs expressjs
+
+WORKDIR /app
+
+# Copy pre-built application from Alpine build (hybrid approach)
+COPY --from=olegkarenkikh/langfuse:worker-cve-fixed --chown=expressjs:expressjs /app .
+
+# Create proper entrypoint script
+RUN echo '#!/bin/bash' > ./worker/entrypoint.sh && \
+    echo 'set -e' >> ./worker/entrypoint.sh && \
+    echo 'echo "Starting Langfuse Worker (AlmaLinux 9)"' >> ./worker/entrypoint.sh && \
+    echo 'echo "Node version: $(node --version)"' >> ./worker/entrypoint.sh && \
+    echo 'echo "pnpm version: $(pnpm --version)"' >> ./worker/entrypoint.sh && \
+    echo 'exec "$@"' >> ./worker/entrypoint.sh && \
+    chmod +x ./worker/entrypoint.sh && \
+    chown expressjs:expressjs ./worker/entrypoint.sh
+
+USER expressjs
+
+EXPOSE 3030
+ENV PORT=3030
+ENV NODE_ENV=production
+
+# Start worker
+ENTRYPOINT ["./worker/entrypoint.sh"]
+CMD ["node", "worker/dist/index.js"]

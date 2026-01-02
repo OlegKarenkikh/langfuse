@@ -84,7 +84,7 @@
       }
     }
   },
-  "packageManager": "pnpm@9.5.0",
+  "packageManager": "pnpm@9.15.0",
   "overrides": {
     "glob": "^11.1.0",
     "tar": "^7.5.2",
@@ -96,7 +96,11 @@
     "@langchain/core": "^0.3.80",
     "@trpc/server": "^11.8.1",
     "@babel/runtime": "^7.26.10",
-    "jsondiffpatch": "^0.7.2"
+    "jsondiffpatch": "^0.7.2",
+    "cross-spawn": "^7.0.6",
+    "brace-expansion": "^2.0.2",
+    "semver": "^7.5.2",
+    "ip": "^2.0.2"
   },
   "pnpm": {
     "overrides": {
@@ -113,7 +117,7 @@
       "esbuild": "^0.25.0",
       "kysely": "workspace:*",
       "js-yaml": "^4.1.1",
-      "cross-spawn": "^7.0.5",
+      "cross-spawn": "^7.0.6",
       "ws": "^8.18.3",
       "tmp": "^0.2.4",
       "form-data": "^4.0.5",
@@ -122,7 +126,7 @@
       "babel-helpers": "^7.26.10",
       "vite": "^7.0.8",
       "nodemailer": "^7.0.11",
-      "next": ">=15.5.8",
+      "next": "15.5.9",
       "mdast-util-to-hast": "^13.2.1",
       "jws": "^4.0.1",
       "solid-js": "^1.9.4",
@@ -131,7 +135,9 @@
       "@trpc/server": "^11.8.1",
       "@babel/runtime": "^7.26.10",
       "jsondiffpatch": "^0.7.2",
-      "braces": "^3.0.3"
+      "braces": "^3.0.3",
+      "semver": "^7.5.2",
+      "ip": "^2.0.2"
     },
     "patchedDependencies": {
       "next-auth@4.24.12": "patches/next-auth@4.24.12.patch"

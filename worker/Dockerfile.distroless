@@ -1,0 +1,73 @@
+# ============================================
+# Distroless Approach - Minimal CVE Surface
+# ============================================
+FROM node:20-alpine AS builder
+
+# Update Alpine packages
+RUN apk update && apk upgrade && apk add --no-cache git python3 make g++
+
+# Install latest pnpm
+RUN npm install -g pnpm@latest && pnpm --version
+
+# Install turbo
+RUN npm install turbo@^2.7.1 --global
+
+WORKDIR /app
+
+# Copy source
+COPY . .
+
+# Remove existing kysely and use CVE-free fork
+RUN rm -rf packages/kysely && \
+    git clone https://github.com/OlegKarenkikh/kysely.git packages/kysely && \
+    cd packages/kysely && \
+    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+
+# Disable preinstall script
+RUN node -e "const fs=require('fs'); if(fs.existsSync('package.json')) { const pkg=JSON.parse(fs.readFileSync('package.json')); if(pkg.scripts && pkg.scripts.preinstall) { delete pkg.scripts.preinstall; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2)); } }"
+
+# FORCE install specific CVE-free versions BEFORE regular install
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+RUN echo "🔧 Pre-installing CVE-free packages..." && \
+    npm install --no-save glob@11.1.0 cross-spawn@7.0.6 semver@7.5.2 tar@7.5.2 brace-expansion@2.0.2 && \
+    echo "✅ CVE-free packages pre-installed"
+
+# Install dependencies
+RUN pnpm install --no-frozen-lockfile --force
+
+# Generate Prisma Client
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+RUN cd packages/shared && \
+    DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" \
+    npx prisma generate --schema=prisma/schema.prisma
+
+# Build worker
+RUN NODE_OPTIONS='--max-old-space-size=1536' \
+    turbo run build --filter=worker...
+
+# Verify CVE packages after build
+RUN echo "🔍 Final CVE package verification:" && \
+    echo "glob versions found:" && \
+    find node_modules -name "package.json" -path "*/glob/*" -exec grep -l '"version"' {} \; | head -5 | xargs -I {} sh -c 'echo "  $(grep version {})"' && \
+    echo "cross-spawn versions found:" && \
+    find node_modules -name "package.json" -path "*/cross-spawn/*" -exec grep -l '"version"' {} \; | head -5 | xargs -I {} sh -c 'echo "  $(grep version {})"'
+
+# ============================================
+# Distroless Runtime (No Go, No Alpine packages)
+# ============================================
+FROM gcr.io/distroless/nodejs20-debian12:latest AS runner
+
+WORKDIR /app
+
+# Copy built application
+COPY --from=builder --chown=nonroot:nonroot /app .
+
+USER nonroot
+
+# Expose worker port
+EXPOSE 3030
+ENV PORT=3030
+ENV NODE_ENV=production
+
+# Start worker directly (no shell, no entrypoint script)
+CMD ["worker/dist/index.js"]
