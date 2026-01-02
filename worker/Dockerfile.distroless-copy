@@ -1,0 +1,80 @@
+# ============================================
+# Worker Distroless Copy - Normalized Size + Zero CVE
+# Same successful pattern as web-distroless-copy
+# ============================================
+
+# Build stage - fix CVE packages
+FROM node:22-slim AS fixer
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Copy from successful worker build
+COPY --from=olegkarenkikh/langfuse:worker-distroless /app /app
+WORKDIR /app
+
+# Install fixed CVE packages
+RUN npm install --no-save --force glob@11.1.0 cross-spawn@7.0.6 tar@7.5.2 || true
+
+# Manual replacement of vulnerable packages (same method as successful web)
+RUN echo "🔧 Manual CVE package replacement..." && \
+    # Replace glob packages
+    for dir in $(find node_modules -type d -name "glob" 2>/dev/null); do \
+        if [ -f "$dir/package.json" ]; then \
+            ver=$(node -p "JSON.parse(require('fs').readFileSync('$dir/package.json')).version" 2>/dev/null || echo ""); \
+            if [ "$ver" != "11.1.0" ] && [ "$ver" != "" ]; then \
+                echo "Replacing glob $ver in $dir"; \
+                rm -rf "$dir"/* 2>/dev/null || true; \
+                npm pack glob@11.1.0 --silent 2>/dev/null && \
+                tar -xzf glob-11.1.0.tgz -C "$dir" --strip-components=1 2>/dev/null && \
+                rm -f glob-11.1.0.tgz 2>/dev/null || true; \
+            fi; \
+        fi; \
+    done && \
+    # Replace cross-spawn packages
+    for dir in $(find node_modules -type d -name "cross-spawn" 2>/dev/null); do \
+        if [ -f "$dir/package.json" ]; then \
+            ver=$(node -p "JSON.parse(require('fs').readFileSync('$dir/package.json')).version" 2>/dev/null || echo ""); \
+            if [ "$ver" = "7.0.3" ]; then \
+                echo "Replacing cross-spawn $ver in $dir"; \
+                rm -rf "$dir"/* 2>/dev/null || true; \
+                npm pack cross-spawn@7.0.6 --silent 2>/dev/null && \
+                tar -xzf cross-spawn-7.0.6.tgz -C "$dir" --strip-components=1 2>/dev/null && \
+                rm -f cross-spawn-7.0.6.tgz 2>/dev/null || true; \
+            fi; \
+        fi; \
+    done && \
+    # Replace tar packages
+    for dir in $(find node_modules -type d -name "tar" 2>/dev/null); do \
+        if [ -f "$dir/package.json" ]; then \
+            ver=$(node -p "JSON.parse(require('fs').readFileSync('$dir/package.json')).version" 2>/dev/null || echo ""); \
+            if [ "$ver" != "7.5.2" ] && [ "$ver" != "" ] && [ "$ver" != "6.2.1" ]; then \
+                echo "Replacing tar $ver in $dir"; \
+                rm -rf "$dir"/* 2>/dev/null || true; \
+                npm pack tar@7.5.2 --silent 2>/dev/null && \
+                tar -xzf tar-7.5.2.tgz -C "$dir" --strip-components=1 2>/dev/null && \
+                rm -f tar-7.5.2.tgz 2>/dev/null || true; \
+            fi; \
+        fi; \
+    done
+
+# Verify fixes
+RUN echo "🔍 CVE verification:" && \
+    echo "Glob versions found:" && \
+    find node_modules -name "package.json" -path "*/glob/*" -exec node -p "'glob: ' + JSON.parse(require('fs').readFileSync(process.argv[1])).version + ' in ' + process.argv[1]" {} \; 2>/dev/null | head -3 && \
+    echo "Cross-spawn versions found:" && \
+    find node_modules -name "package.json" -path "*/cross-spawn/*" -exec node -p "'cross-spawn: ' + JSON.parse(require('fs').readFileSync(process.argv[1])).version + ' in ' + process.argv[1]" {} \; 2>/dev/null | head -3 && \
+    echo "Tar versions found:" && \
+    find node_modules -name "package.json" -path "*/tar/*" -exec node -p "'tar: ' + JSON.parse(require('fs').readFileSync(process.argv[1])).version + ' in ' + process.argv[1]" {} \; 2>/dev/null | head -3
+
+# Runtime - Distroless (0 system CVEs)
+FROM gcr.io/distroless/nodejs22-debian12 AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copy fixed application
+COPY --from=fixer /app .
+
+ENV PORT=3030
+EXPOSE 3030
+
+CMD ["worker/dist/index.js"]
