@@ -1,0 +1,114 @@
+# ============================================
+# CVE-Free Worker - Pure Node.js (No Go, No Corepack)
+# ============================================
+# Strategy:
+# 1. Use node:22-slim without corepack (avoids Go stdlib)
+# 2. Install pnpm via npm (not corepack)
+# 3. Force glob@11.1.0 via direct replacement
+# ============================================
+
+FROM node:22-slim AS base
+
+# Minimal packages - NO gnupg2
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install pnpm via npm (NOT corepack - corepack brings Go)
+RUN npm install -g pnpm@10.12.1 turbo@^2.7.1
+
+# ============================================
+# Stage 2: Prune
+# ============================================
+FROM base AS pruner
+WORKDIR /app
+COPY . .
+
+# Remove preinstall script
+RUN node -e "const fs=require('fs'); \
+    const pkg=JSON.parse(fs.readFileSync('package.json')); \
+    if(pkg.scripts?.preinstall) delete pkg.scripts.preinstall; \
+    fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+
+RUN turbo prune --scope=worker --docker
+
+# ============================================
+# Stage 3: Build
+# ============================================
+FROM base AS builder
+WORKDIR /app
+
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=pruner /app/out/json/ .
+
+# Remove preinstall + add overrides
+RUN node -e " \
+    const fs = require('fs'); \
+    const pkg = JSON.parse(fs.readFileSync('package.json')); \
+    if(pkg.scripts?.preinstall) delete pkg.scripts.preinstall; \
+    pkg.pnpm = pkg.pnpm || {}; \
+    pkg.pnpm.overrides = { \
+        'glob': '11.1.0', \
+        'tar': '7.5.2', \
+        'cross-spawn': '7.0.6' \
+    }; \
+    fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2)); \
+"
+
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+
+# Fresh install
+RUN rm -rf node_modules pnpm-lock.yaml && pnpm install --no-frozen-lockfile
+
+# Force replace glob if override didn't work
+RUN find node_modules -type d -name "glob" -exec sh -c ' \
+    for dir; do \
+        pkgjson="$dir/package.json"; \
+        if [ -f "$pkgjson" ]; then \
+            ver=$(node -p "require(\"$pkgjson\").version" 2>/dev/null || echo ""); \
+            if [ -n "$ver" ] && [ "$ver" != "11.1.0" ]; then \
+                echo "Replacing glob $ver with 11.1.0 in $dir"; \
+                rm -rf "$dir"/*; \
+                cd "$dir" && npm pack glob@11.1.0 --quiet && tar -xzf glob-11.1.0.tgz --strip-components=1 && rm -f glob-11.1.0.tgz; \
+            fi \
+        fi \
+    done' sh {} +
+
+# Verify glob
+RUN echo "=== Glob versions ===" && \
+    find node_modules -path "*/glob/package.json" -exec node -p "require('{}').name + '@' + require('{}').version" \; 2>/dev/null | sort -u
+
+COPY --from=pruner /app/out/full/ .
+
+# Prisma
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+RUN cd packages/shared && npx prisma generate --schema=prisma/schema.prisma
+
+# Build
+RUN NODE_OPTIONS='--max-old-space-size=1536' turbo run build --filter=worker...
+RUN ls -la worker/dist/index.js
+
+# ============================================
+# Stage 4: Runtime (Minimal - no extra packages)
+# ============================================
+FROM node:22-slim AS runner
+
+# Security updates only
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+RUN groupadd -g 1001 expressjs && useradd -u 1001 -g expressjs -s /bin/sh expressjs
+
+COPY --from=builder --chown=expressjs:expressjs /app .
+
+USER expressjs
+EXPOSE 3030
+ENV PORT=3030
+
+CMD ["node", "worker/dist/index.js"]

@@ -1,0 +1,181 @@
+# ============================================
+# AlmaLinux 9 Secure Build - No Go Runtime CVEs
+# ============================================
+# Strategy:
+# 1. AlmaLinux 9 base (stable, no busybox, modern GCC)
+# 2. Node.js from official binaries (no Go runtime)
+# 3. pnpm 10.x (fixes CVE-2024-47829)
+# 4. Force glob@11.1.0, tar@7.5.2 via overrides
+# ============================================
+
+# ============================================
+# Stage 1: Base with Node.js from binaries
+# ============================================
+FROM almalinux:9 AS base
+
+# Install build essentials (AlmaLinux 9 has modern GCC 11+)
+RUN dnf update -y && \
+    dnf install -y \
+        git \
+        python3 \
+        python3-pip \
+        make \
+        gcc-c++ \
+        tar \
+        xz \
+        ca-certificates \
+        && dnf clean all
+
+# Install Node.js 22 LTS from official binaries (NO Go runtime!)
+ENV NODE_VERSION=22.16.0
+RUN curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz | \
+    tar -xJ -C /usr/local --strip-components=1 && \
+    node --version && npm --version
+
+# Install pnpm 10.x (fixes CVE-2024-47829)
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
+RUN pnpm --version
+
+# Install turbo
+RUN npm install turbo@^2.7.1 --global
+
+# ============================================
+# Stage 2: Build Kysely (CVE-free fork)
+# ============================================
+FROM base AS kysely-builder
+
+WORKDIR /kysely
+RUN git clone https://github.com/OlegKarenkikh/kysely.git . && \
+    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
+RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
+RUN npx tsc -p tsconfig.json && npx tsc -p tsconfig-cjs.json
+RUN rm -rf node_modules test site example docs .github
+
+# ============================================
+# Stage 3: Prune Workspace
+# ============================================
+FROM base AS pruner
+
+WORKDIR /app
+COPY . .
+
+# Replace kysely with secure fork
+RUN rm -rf packages/kysely
+COPY --from=kysely-builder /kysely ./packages/kysely
+
+# Remove preinstall script
+RUN node -e "const fs=require('fs'); \
+    const pkg=JSON.parse(fs.readFileSync('package.json')); \
+    if(pkg.scripts?.preinstall) delete pkg.scripts.preinstall; \
+    fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+
+# Update lockfile
+RUN pnpm install --lockfile-only || true
+
+# Prune for worker
+RUN turbo prune --scope=worker --docker
+
+# ============================================
+# Stage 4: Build Worker
+# ============================================
+FROM base AS builder
+
+WORKDIR /app
+
+# Copy pruned files
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=pruner /app/out/json/ .
+
+# Remove preinstall script
+RUN node -e "const fs=require('fs'); \
+    const pkg=JSON.parse(fs.readFileSync('package.json')); \
+    if(pkg.scripts?.preinstall) delete pkg.scripts.preinstall; \
+    fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+
+# CRITICAL: Force CVE-fixed versions via pnpm overrides
+RUN node -e " \
+    const fs = require('fs'); \
+    const pkg = JSON.parse(fs.readFileSync('package.json')); \
+    pkg.pnpm = pkg.pnpm || {}; \
+    pkg.pnpm.overrides = { \
+        'glob': '11.1.0', \
+        'glob@>=10.0.0': '11.1.0', \
+        'glob@^10.0.0': '11.1.0', \
+        'glob@^10.2.0': '11.1.0', \
+        'glob@^10.3.0': '11.1.0', \
+        'glob@^10.4.0': '11.1.0', \
+        'glob@^11.0.0': '11.1.0', \
+        'tar': '7.5.2', \
+        'tar@>=7.0.0': '7.5.2', \
+        'tar@^7.0.0': '7.5.2', \
+        'cross-spawn': '7.0.6', \
+        'brace-expansion': '2.0.2' \
+    }; \
+    fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2)); \
+    console.log('Updated overrides:', JSON.stringify(pkg.pnpm.overrides, null, 2)); \
+"
+
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+
+# Clean install with forced resolution
+RUN rm -rf node_modules pnpm-lock.yaml && \
+    pnpm install --no-frozen-lockfile
+
+# Verify glob version
+RUN echo "=== Checking glob versions ===" && \
+    find node_modules -name "package.json" -path "*/glob/*" -exec grep -l '"name": "glob"' {} \; | \
+    xargs -I {} sh -c 'echo "File: {}"; grep -A1 "\"name\": \"glob\"" {} | grep version || true' && \
+    echo "=== End glob check ==="
+
+# Copy full source
+COPY --from=pruner /app/out/full/ .
+
+# Generate Prisma
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+RUN cd packages/shared && npx prisma generate --schema=prisma/schema.prisma
+
+# Build worker
+RUN NODE_OPTIONS='--max-old-space-size=1536' turbo run build --filter=worker...
+
+# Verify build
+RUN ls -la worker/dist/index.js
+
+# ============================================
+# Stage 5: Production Runtime (Minimal AlmaLinux 9)
+# ============================================
+FROM almalinux:9-minimal AS runner
+
+# Install only Node.js runtime (no build tools, no Go)
+ENV NODE_VERSION=22.16.0
+RUN microdnf update -y && \
+    microdnf install -y tar xz ca-certificates && \
+    curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz | \
+    tar -xJ -C /usr/local --strip-components=1 && \
+    microdnf clean all && \
+    rm -rf /var/cache/yum
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Create non-root user
+RUN echo 'expressjs:x:1001:1001::/app:/sbin/nologin' >> /etc/passwd && \
+    echo 'expressjs:x:1001:' >> /etc/group
+
+# Copy built application
+COPY --from=builder --chown=1001:1001 /app .
+
+# Create entrypoint
+RUN echo '#!/bin/sh' > ./worker/entrypoint.sh && \
+    echo 'exec "$@"' >> ./worker/entrypoint.sh && \
+    chmod +x ./worker/entrypoint.sh
+
+USER 1001
+EXPOSE 3030
+ENV PORT=3030
+
+ENTRYPOINT ["./worker/entrypoint.sh"]
+CMD ["node", "worker/dist/index.js"]
