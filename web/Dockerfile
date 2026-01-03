@@ -28,6 +28,12 @@ RUN git clone https://github.com/OlegKarenkikh/kysely.git . && \
 
 RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
 
+# Force install vulnerable dependencies to fixed versions
+RUN npm install glob@^11.1.0 tar@^7.5.2 --save-dev --ignore-scripts
+
+# Remove old glob if exists in package-lock (which it does in kysely)
+RUN npm uninstall glob rimraf && npm install glob@^11.1.0 tar@^7.5.2 --save-dev --ignore-scripts
+
 RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
 
 RUN npx tsc -p tsconfig.json && \
@@ -322,8 +328,17 @@ ARG GID=1001
 RUN addgroup --system --gid ${GID} nodejs && \
     adduser --system --uid ${UID} nextjs
 
+# Update npm to latest to fix bundled dependencies (glob, tar)
+RUN npm install -g npm@latest
+
 # Install Prisma CLI for migrations
 RUN npm install -g --no-package-lock --no-save prisma@7.2.0
+
+# Security: Patch global npm vulnerabilities (safely)
+# Remove all bundled glob instances in npm and corepack
+RUN rm -rf /root/.cache && \
+    rm -rf /usr/local/lib/node_modules/npm/node_modules/glob && \
+    rm -rf /usr/local/lib/node_modules/npm/node_modules/node-gyp/node_modules/glob
 
 # Install dd-trace only for Cloud deployments
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
