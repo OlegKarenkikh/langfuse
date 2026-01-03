@@ -31,6 +31,9 @@ RUN git clone https://github.com/OlegKarenkikh/kysely.git . && \
 # Fix repository URL in package.json
 RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
 
+# Force install vulnerable dependencies to fixed versions
+RUN npm uninstall glob rimraf && npm install glob@^11.1.0 tar@^7.5.2 --save-dev --ignore-scripts
+
 # Install only TypeScript compiler (no unnecessary dependencies)
 RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
 
@@ -220,6 +223,9 @@ ARG UID=1001
 ARG GID=1001
 RUN addgroup --system --gid ${GID} expressjs && \
     adduser --system --uid ${UID} expressjs
+
+# Security: Remove npm completely (not needed in runtime) to remove bundled vulnerabilities
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /root/.cache
 
 USER expressjs
 
