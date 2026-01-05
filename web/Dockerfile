@@ -288,7 +288,7 @@ RUN rm -rf node_modules \
     && rm -rf web/node_modules \
     && rm -rf web/.next/cache \
     && rm -rf .turbo \
-    && find . -name "*.ts" -not -path "./web/.next/standalone/*" -type f -delete 2>/dev/null || true \
+    && find . -name "*.ts" -not -path "./web/.next/standalone/*" -not -name "prisma.config.ts" -type f -delete 2>/dev/null || true \
     && find . -name "*.tsx" -not -path "./web/.next/standalone/*" -type f -delete 2>/dev/null || true \
     && find . -name "tsconfig.json" -type f -delete 2>/dev/null || true \
     && echo "Optimization complete. Standalone size:" \
@@ -324,6 +324,9 @@ RUN addgroup --system --gid ${GID} nodejs && \
 
 # Install Prisma CLI for migrations
 RUN npm install -g --no-package-lock --no-save prisma@7.2.0
+
+# Install Prisma config to support migrations (required for Prisma 7+)
+RUN npm install -g --no-package-lock --no-save @prisma/config@7.2.0
 
 # Install dd-trace only for Cloud deployments
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
@@ -367,6 +370,7 @@ RUN if [ -d "./web/.next/standalone" ]; then \
 
 # Copy Prisma schema and ClickHouse migrations
 COPY --from=optimizer --chown=nextjs:nodejs /app/packages/shared/prisma ./packages/shared/prisma
+COPY --from=optimizer --chown=nextjs:nodejs /app/packages/shared/prisma.config.ts ./packages/shared/prisma.config.ts
 COPY --from=optimizer --chown=nextjs:nodejs /app/packages/shared/clickhouse ./packages/shared/clickhouse
 
 # Copy entrypoint and scripts

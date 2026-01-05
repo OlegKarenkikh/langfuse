@@ -35,6 +35,7 @@ if [ "$LANGFUSE_AUTO_POSTGRES_MIGRATION_DISABLED" != "true" ]; then
     prisma db execute --url "$DIRECT_URL" --file "./packages/shared/scripts/cleanup.sql"
 
     # Apply migrations
+    export DATABASE_URL="$DIRECT_URL"
     prisma migrate deploy --schema=./packages/shared/prisma/schema.prisma
 fi
 status=$?
