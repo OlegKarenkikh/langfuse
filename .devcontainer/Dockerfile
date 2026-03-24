@@ -2,7 +2,7 @@
 FROM mcr.microsoft.com/vscode/devcontainers/typescript-node:20-bookworm
 
 # Install Go toolchain to compile golang-migrate with a patched stdlib (avoids CVE-2025-61723/61724/61725/61727/61729/47906/47912/58183/58185/58186/58187/58188/58189)
-ARG GO_VERSION=1.25.0
+ARG GO_VERSION=1.24.2
 RUN curl -fsSL https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz -o /tmp/golang.tar.gz && \
     tar -C /usr/local -xzf /tmp/golang.tar.gz && \
     rm /tmp/golang.tar.gz && \
