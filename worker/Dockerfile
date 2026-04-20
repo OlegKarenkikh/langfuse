@@ -35,8 +35,10 @@ RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKare
 RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
 
 # Compile TypeScript to JavaScript (both ESM and CJS)
-RUN npx tsc -p tsconfig.json && \
-    npx tsc -p tsconfig-cjs.json
+RUN npx tsc -p tsconfig.json --skipLibCheck && \
+    npx tsc -p tsconfig-cjs.json --skipLibCheck && \
+    node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.types='dist/cjs/index.d.ts';p.typings='dist/cjs/index.d.ts';fs.writeFileSync('package.json',JSON.stringify(p,null,2));" && \
+    echo "✅ kysely types field set"
 
 # Verify build output exists
 RUN ls -la dist/cjs/index.js dist/esm/index.js || \
@@ -72,6 +74,10 @@ COPY . .
 # Replace standard kysely with our secure build
 RUN rm -rf packages/kysely
 COPY --from=kysely-builder /kysely ./packages/kysely
+
+# Patch kysely package.json to add types field for TypeScript resolution
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('./packages/kysely/package.json','utf8'));p.types='dist/cjs/index.d.ts';p.typings='dist/cjs/index.d.ts';fs.writeFileSync('./packages/kysely/package.json',JSON.stringify(p,null,2));" && \
+    echo "✅ kysely package.json types patched in pruner"
 
 # Validate kysely package.json is valid JSON
 RUN node -e "try { \
