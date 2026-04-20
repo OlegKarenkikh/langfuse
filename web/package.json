@@ -128,7 +128,7 @@
     "kysely": "workspace:*",
     "langchain": "^0.3.37",
     "langfuse": "3.38.4",
-    "lodash": "^4.17.21",
+    "lodash": "^4.18.0",
     "lucide-react": "^0.552.0",
     "nanoid": "^3.3.8",
     "next": "15.5.9",
@@ -219,12 +219,12 @@
   "overrides": {
     "cross-spawn": "^7.0.6",
     "glob": "^11.1.0",
-    "tar": "^7.5.2",
+    "tar": "^7.5.11",
     "brace-expansion": "^2.0.2"
   },
   "resolutions": {
     "glob": "^11.1.0",
-    "tar": "^7.5.2",
+    "tar": "^7.5.11",
     "brace-expansion": "^2.0.2",
     "cross-spawn": "^7.0.6"
   },
