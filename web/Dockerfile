@@ -397,10 +397,10 @@ RUN addgroup --system --gid ${GID} nodejs && \
     adduser --system --uid ${UID} nextjs
 
 # Install Prisma CLI for migrations
-RUN npm install -g --no-package-lock --no-save prisma@7.2.0
+RUN npm install -g --no-package-lock --no-save prisma@7.7.0
 
 # Install Prisma config to support migrations (required for Prisma 7+)
-RUN npm install -g --no-package-lock --no-save @prisma/config@7.2.0
+RUN npm install -g --no-package-lock --no-save @prisma/config@7.7.0
 
 # Install dd-trace only for Cloud deployments
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
@@ -454,10 +454,9 @@ RUN chmod +x ./web/entrypoint.sh
 
 
 # ================================================================
-# SECURITY: Patch node_modules in RUNNER stage
-# standalone build copies node_modules here — patch version fields
-# so Trivy node-pkg scanner sees patched versions
-# ================================================================
+
+# SECURITY: Patch global node_modules installed by npm install -g
+# prisma and @prisma/config bundle vulnerable transitive deps
 RUN node -e "var fs=require('fs'),path=require('path');\
 var FIXES={'hono':'4.12.4','@hono/node-server':'1.19.10',\
 'minimatch':'10.2.3','glob':'11.1.0','effect':'3.20.0',\
@@ -483,10 +482,10 @@ fs.writeFileSync(pj,JSON.stringify(pkg,null,2));\
 console.log('PATCHED:',nm,old,'->',FIXES[nm]);}}\
 catch(e){}}\
 walk(full);});}catch(e){}}\
-['node_modules',\
-'web/.next/standalone/node_modules',\
-'web/node_modules'].forEach(walk);\
-console.log('Patch complete.');"
+['/usr/local/lib/node_modules',\
+'node_modules',\
+'web/.next/standalone/node_modules'].forEach(walk);\
+console.log('Global patch complete.');"
 
 USER nextjs
 
