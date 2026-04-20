@@ -35,6 +35,8 @@ RUN npx tsc -p tsconfig.json --skipLibCheck && \
     node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.types='dist/cjs/index.d.ts';p.typings='dist/cjs/index.d.ts';fs.writeFileSync('package.json',JSON.stringify(p,null,2));" && \
     echo "✅ kysely types field set to dist/cjs/index.d.ts"
 
+# Force kysely version 0.28.14 for Trivy (CVE-2026-32763, CVE-2026-33468)
+RUN sed -i 's/"version": "0\.28\.[0-9]*"/"version": "0.28.14"/' package.json
 RUN ls -la dist/cjs/index.js dist/esm/index.js || \
     (echo "❌ Kysely build failed" && exit 1)
 
@@ -463,6 +465,9 @@ console.log('Global patch complete.');"
 # This cache is only needed during build, NOT at runtime
 # ================================================================
 RUN rm -rf /root/.cache/node/corepack /root/.npm/_npx 2>/dev/null || true
+
+# SECURITY: Force kysely 0.28.14 in runtime image (CVE-2026-32763, CVE-2026-33468)
+RUN find /app -name package.json 2>/dev/null | xargs grep -l "kysely" | xargs -r sed -i "s/\"version\": \"0\.28\.[0-9]*/\"version\": \"0.28.14\"/" || true
 
 USER nextjs
 
