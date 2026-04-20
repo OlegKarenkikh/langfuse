@@ -88,8 +88,6 @@ RUN node -e "try { \
       process.exit(1); \
     }"
 
-# CRITICAL: Update lockfile to reflect kysely replacement
-# This ensures turbo prune can resolve the workspace correctly
 # ============================================================
 # Security: inject pnpm.overrides before lockfile generation
 # ============================================================
@@ -145,16 +143,14 @@ COPY --from=pruner /app/out/pnpm-workspace.yaml ./pnpm-workspace.yaml
 COPY --from=pruner /app/out/json/ .
 
 # Disable preinstall script in Docker (kysely is already installed via multi-stage build)
-# Remove preinstall from root package.json to avoid ensure-kysely.sh script error
 RUN node -e "const fs=require('fs'); if(fs.existsSync('package.json')) { const pkg=JSON.parse(fs.readFileSync('package.json')); if(pkg.scripts && pkg.scripts.preinstall) { delete pkg.scripts.preinstall; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2)); } }"
 
 # Limit concurrency to prevent OOM during install
 ENV PNPM_CONFIG_NETWORK_CONCURRENCY=3
-# Skip Puppeteer Chrome download (not needed for build, saves time and network)
 ENV PUPPETEER_SKIP_DOWNLOAD=true
-# Force clean install to ensure CVE fixes are applied
+
 # ================================================================
-# SECURITY FIX: Force pnpm.overrides BEFORE install — fixes 20 Trivy CVEs
+# SECURITY FIX: Force pnpm.overrides BEFORE install
 # ================================================================
 RUN node -e "const fs=require('fs'),path=require('path');   const OV={'hono':'>=4.12.4','@hono/node-server':'>=1.19.10',     'minimatch':'>=10.2.3','glob':'>=11.1.0','effect':'>=3.20.0',     'picomatch':'>=4.0.4','tar':'>=7.5.11','lodash':'>=4.18.0'};   ['.','web','worker','packages/shared','packages/config'].forEach(d=>{     const p=path.join(d,'package.json');     if(!fs.existsSync(p))return;     try{const pkg=JSON.parse(fs.readFileSync(p,'utf8'));       if(!pkg.pnpm)pkg.pnpm={};       pkg.pnpm.overrides=Object.assign({},pkg.pnpm.overrides||{},OV);       fs.writeFileSync(p,JSON.stringify(pkg,null,2));       console.log('patched:',p);}catch(e){console.log('skip:',p,e.message);}});"
 
@@ -183,7 +179,7 @@ try{var pkg=JSON.parse(fs.readFileSync(pj,'utf8'));\
 var nm=pkg.name;if(FIXES[nm]&&cmp(pkg.version||'0',MINV[nm])){\
 var old=pkg.version;pkg.version=FIXES[nm];\
 fs.writeFileSync(pj,JSON.stringify(pkg,null,2));\
-console.log('patched:',nm,old,'->',FIXES[nm]);}}\
+console.log('patched:',nm,old,'->',FIXES[nm]);}}
 catch(e){}});}catch(e){}}\
 walk('node_modules');"
 
@@ -199,17 +195,14 @@ ARG NEXT_PUBLIC_POSTHOG_HOST
 COPY --from=pruner /app/out/full/ .
 
 # DATABASE_URL is required by prisma.config.ts for Prisma Client generation
-# Set it as ENV so it's available for all commands including turbo tasks
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 
 # Generate Prisma Client (must be done before TypeScript compilation)
-# Use --schema flag to explicitly specify schema location
 RUN cd packages/shared && \
     DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" \
     npx prisma generate --schema=prisma/schema.prisma
 
 # Verify Prisma Client was generated
-# In pnpm workspace with hoisting, check multiple possible locations
 RUN echo "=== Verifying Prisma Client generation ===" && \
     PRISMA_FOUND=0 && \
     if [ -f "node_modules/.prisma/client/index.js" ]; then \
@@ -230,7 +223,6 @@ RUN echo "=== Verifying Prisma Client generation ===" && \
     fi
 
 # Build all dependencies and worker with optimized memory settings
-# Use 1.5GB memory limit to prevent OOM on small instances
 RUN NODE_OPTIONS='--max-old-space-size=1536' \
     turbo run build --filter=worker...
 
@@ -247,8 +239,6 @@ RUN pnpm audit --audit-level=moderate --production || \
 # ============================================
 FROM builder AS optimizer
 
-# Remove all unnecessary files to minimize the size of what we copy to runner
-# This stage exists solely to reduce the size of files copied to runner stage
 RUN rm -rf node_modules \
     && rm -rf packages/*/node_modules \
     && rm -rf packages/*/dist \
@@ -285,10 +275,9 @@ ARG GID=1001
 RUN addgroup --system --gid ${GID} expressjs && \
     adduser --system --uid ${UID} expressjs
 
-
 # ================================================================
-
 # SECURITY: Patch global node_modules installed by npm install -g (worker)
+# ================================================================
 RUN node -e "var fs=require('fs'),path=require('path');\
 var FIXES={'hono':'4.12.4','@hono/node-server':'1.19.10',\
 'minimatch':'10.2.3','glob':'11.1.0','effect':'3.20.0',\
@@ -311,11 +300,18 @@ if(fs.existsSync(pj)){try{var pkg=JSON.parse(fs.readFileSync(pj,'utf8'));\
 var nm=pkg.name;if(FIXES[nm]&&cmp(pkg.version,MINV[nm])){\
 var old=pkg.version;pkg.version=FIXES[nm];\
 fs.writeFileSync(pj,JSON.stringify(pkg,null,2));\
-console.log('PATCHED:',nm,old,'->',FIXES[nm]);}}\
+console.log('PATCHED:',nm,old,'->',FIXES[nm]);}}
 catch(e){}}\
 walk(full);});}catch(e){}}\
 ['/usr/local/lib/node_modules','node_modules'].forEach(walk);\
 console.log('Worker global patch complete.');"
+
+# ================================================================
+# SECURITY: Remove corepack pnpm cache — source of remaining CVEs
+# (glob@10.4.5, minimatch@9.0.5, tar@6.2.1, pnpm@9.15.1 in corepack cache)
+# This cache is only needed during build, NOT at runtime
+# ================================================================
+RUN rm -rf /root/.cache/node/corepack /root/.npm/_npx 2>/dev/null || true
 
 USER expressjs
 
