@@ -251,13 +251,8 @@ RUN if find node_modules -name ".prisma" -type d 2>/dev/null | head -1 | grep -q
     fi
 
 # Build web application with optimized memory settings
-# Use 1.5GB memory limit - smaller limit can work better if system can't allocate large chunks
-# Also set Next.js build optimizations to reduce memory usage
-# Increased memory limit to 3GB to prevent ResourceExhausted errors during build
-# Note: This requires at least 8GB RAM on the host and 6GB+ allocated to Docker Desktop
 ENV NODE_OPTIONS='--max-old-space-size=3072'
 ENV NEXT_BUILD_OPTIMIZE=1
-# Additional optimizations to reduce memory usage during build
 ENV NODE_ENV=production
 
 # Verify environment before build
@@ -273,9 +268,6 @@ RUN echo "=== Build Environment Check ===" && \
     echo "Disk space: $(df -h / 2>/dev/null | tail -1 || echo 'N/A')" && \
     echo "=== Starting build ==="
 
-# Build with detailed error logging for debugging
-# Force standalone output by setting environment variable
-# Use Next.js with webpack (required for standalone output) instead of Turbopack
 ENV NEXT_OUTPUT_MODE=standalone
 RUN echo "=== Starting Next.js build with webpack (standalone mode) ===" && \
     NODE_OPTIONS='--max-old-space-size=3072' \
@@ -309,7 +301,6 @@ RUN echo "=== Starting Next.js build with webpack (standalone mode) ===" && \
         (grep -i "compiled\|build.*complete\|standalone" /tmp/build.log | tail -10 || echo "No build completion message found"); \
     fi
 
-# Verify Next.js build output was created (lenient check - continue even if standalone not found)
 RUN echo "=== Verifying Next.js build output ===" && \
     echo "Next.js output structure:" && \
     ls -la web/.next/ && \
@@ -333,9 +324,6 @@ RUN echo "=== Verifying Next.js build output ===" && \
         fi; \
     fi
 
-# Clean up build artifacts to reduce image size and prevent export issues
-# Remove unnecessary files that are not needed in the final image
-# This significantly reduces the size of the builder stage and prevents EOF errors during export
 RUN rm -rf web/.next/cache \
     && rm -rf node_modules/.cache \
     && rm -rf packages/*/node_modules/.cache \
@@ -354,8 +342,6 @@ RUN pnpm audit --audit-level=moderate --production || \
 # ============================================
 FROM builder AS optimizer
 
-# Remove all unnecessary files to minimize the size of what we copy to runner
-# This stage exists solely to reduce the size of files copied to runner stage
 RUN rm -rf node_modules \
     && rm -rf packages/*/node_modules \
     && rm -rf packages/*/dist \
@@ -408,19 +394,10 @@ RUN if [ -n "$NEXT_PUBLIC_LANGFUSE_CLOUD_REGION" ]; then \
       npm install --no-package-lock --no-save dd-trace@5.81.0; \
     fi
 
-# Skip migrate tool installation for now - can be added later if needed
-# RUN apk add --no-cache curl && \
-#     curl -L https://github.com/golang-migrate/migrate/releases/download/v4.20.0/migrate.linux-amd64.tar.gz | tar xvz -C /tmp && \
-#     mv /tmp/migrate /usr/bin/migrate && \
-#     chmod +x /usr/bin/migrate
-
 # Copy files from optimizer stage (smaller size due to cleanup)
-# Copy configuration files first (small files)
 COPY --from=optimizer --chown=nextjs:nodejs /app/web/next.config.mjs .
 COPY --from=optimizer --chown=nextjs:nodejs /app/web/package.json .
 
-# Copy Next.js build output (handle both standalone and regular builds)
-# First check what type of build we have and copy accordingly
 RUN echo "Checking build output type..." && \
     if [ -d "/app/web/.next/standalone" ]; then \
         echo "Found standalone build - will copy standalone output"; \
@@ -430,33 +407,26 @@ RUN echo "Checking build output type..." && \
         echo "Build output structure unknown - copying all .next content"; \
     fi
 
-# Copy Next.js output based on what was built
 COPY --from=optimizer --chown=nextjs:nodejs /app/web/.next ./web/.next
-
-# Copy static assets and public files
 COPY --from=optimizer --chown=nextjs:nodejs /app/web/public ./web/public
 
-# If standalone build exists, also copy it to root for easier access
 RUN if [ -d "./web/.next/standalone" ]; then \
         echo "Copying standalone files to root for easier access..." && \
         cp -r ./web/.next/standalone/* . 2>/dev/null || true; \
     fi
 
-# Copy Prisma schema and ClickHouse migrations
 COPY --from=optimizer --chown=nextjs:nodejs /app/packages/shared/prisma ./packages/shared/prisma
 COPY --from=optimizer --chown=nextjs:nodejs /app/packages/shared/prisma.config.ts ./packages/shared/prisma.config.ts
 COPY --from=optimizer --chown=nextjs:nodejs /app/packages/shared/clickhouse ./packages/shared/clickhouse
 
-# Copy entrypoint and scripts
 COPY --chown=nextjs:nodejs ./web/entrypoint.sh ./web/entrypoint.sh
 COPY --from=optimizer --chown=nextjs:nodejs /app/packages/shared/scripts/cleanup.sql ./packages/shared/scripts/cleanup.sql
 RUN chmod +x ./web/entrypoint.sh
 
-
 # ================================================================
-
 # SECURITY: Patch global node_modules installed by npm install -g
 # prisma and @prisma/config bundle vulnerable transitive deps
+# ================================================================
 RUN node -e "var fs=require('fs'),path=require('path');\
 var FIXES={'hono':'4.12.4','@hono/node-server':'1.19.10',\
 'minimatch':'10.2.3','glob':'11.1.0','effect':'3.20.0',\
@@ -487,13 +457,19 @@ walk(full);});}catch(e){}}\
 'web/.next/standalone/node_modules'].forEach(walk);\
 console.log('Global patch complete.');"
 
+# ================================================================
+# SECURITY: Remove corepack pnpm cache — source of remaining CVEs
+# (glob@10.4.5, minimatch@9.0.5, tar@6.2.1, pnpm@9.15.1 in corepack cache)
+# This cache is only needed during build, NOT at runtime
+# ================================================================
+RUN rm -rf /root/.cache/node/corepack /root/.npm/_npx 2>/dev/null || true
+
 USER nextjs
 
 ENV PORT=3000
 
 ENTRYPOINT ["dumb-init", "--", "./web/entrypoint.sh"]
 
-# Start with dd-trace if Cloud deployment, handle different build types
 CMD echo "Starting Langfuse web server..." && \
     echo "Checking for available server files..." && \
     if [ -f "./web/server.js" ]; then \
