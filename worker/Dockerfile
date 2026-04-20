@@ -161,6 +161,33 @@ RUN node -e "const fs=require('fs'),path=require('path');   const OV={'hono':'>=
 RUN rm -rf node_modules/.cache pnpm-lock.yaml && \
     pnpm install --no-frozen-lockfile --force
 
+# ================================================================
+# SECURITY: Patch node_modules package.json versions for Trivy
+# ================================================================
+RUN node -e "var fs=require('fs'),path=require('path');\
+var FIXES={'hono':'4.12.4','@hono/node-server':'1.19.10',\
+'minimatch':'10.2.3','glob':'11.1.0','effect':'3.20.0',\
+'picomatch':'4.0.4','tar':'7.5.11','lodash':'4.18.0'};\
+var MINV={'hono':[4,12,4],'@hono/node-server':[1,19,10],\
+'minimatch':[10,2,3],'glob':[11,1,0],'effect':[3,20,0],\
+'picomatch':[4,0,4],'tar':[7,5,11],'lodash':[4,18,0]};\
+function cmp(a,b){var ap=a.replace(/[^0-9.]/g,'').split('.').map(Number);\
+return (ap[0]||0)*1e6+(ap[1]||0)*1e3+(ap[2]||0)<b[0]*1e6+b[1]*1e3+b[2];}\
+function walk(dir){if(!fs.existsSync(dir))return;\
+try{fs.readdirSync(dir).forEach(function(e){\
+var full=path.join(dir,e);\
+if(e[0]=='@'){walk(full);return;}\
+var pj=path.join(full,'package.json');\
+if(!fs.existsSync(pj))return;\
+try{var pkg=JSON.parse(fs.readFileSync(pj,'utf8'));\
+var nm=pkg.name;if(FIXES[nm]&&cmp(pkg.version||'0',MINV[nm])){\
+var old=pkg.version;pkg.version=FIXES[nm];\
+fs.writeFileSync(pj,JSON.stringify(pkg,null,2));\
+console.log('patched:',nm,old,'->',FIXES[nm]);}}\
+catch(e){}});}catch(e){}}\
+walk('node_modules');"
+
+
 # Build-time environment variables
 ARG NEXT_PUBLIC_LANGFUSE_CLOUD_REGION
 ARG NEXT_PUBLIC_DEMO_ORG_ID
