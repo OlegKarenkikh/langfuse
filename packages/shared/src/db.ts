@@ -69,6 +69,7 @@ export class KyselySingleton {
       return KyselySingleton.instance;
     }
 
+    // @ts-ignore -- olegkarenkikh/kysely fork type compat with prisma-extension-kysely
     KyselySingleton.instance = PrismaClientSingleton.getInstance().$extends(
       kyselyExtension({
         kysely: (driver) =>
@@ -97,6 +98,7 @@ declare const globalThis: {
 // eslint-disable-next-line turbo/no-undeclared-env-vars
 if (process.env.NODE_ENV === "development") {
   globalThis.prismaGlobal ??= createPrismaInstance(); // regular instantiation
+  // @ts-ignore -- olegkarenkikh/kysely fork type compat with prisma-extension-kysely
   globalThis.kyselyPrismaGlobal ??= globalThis.prismaGlobal.$extends(
     kyselyExtension({
       kysely: (driver) =>
