@@ -20,6 +20,7 @@ on:
       - "worker/entrypoint.sh"
       - "worker/Dockerfile"
       - "worker/src/**"
+      - "worker/src/**"
       - "packages/**"
 
 concurrency:
