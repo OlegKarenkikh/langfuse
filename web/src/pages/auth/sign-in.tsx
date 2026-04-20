@@ -16,7 +16,7 @@ import {
   SiOkta,
   SiAuthentik,
   SiAuth0,
-  SiAwscognito,
+  SiAmazoncognito,
   SiKeycloak,
   SiGoogle,
   SiGitlab,
@@ -326,7 +326,7 @@ export function SSOButtons({
           )}
           {authProviders.cognito && (
             <AuthProviderButton
-              icon={<SiAwscognito className="mr-3" size={18} />}
+              icon={<SiAmazoncognito className="mr-3" size={18} />}
               label="Cognito"
               onClick={() => handleSignIn("cognito")}
               loading={providerSigningIn === "cognito"}
