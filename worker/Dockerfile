@@ -153,6 +153,11 @@ ENV PNPM_CONFIG_NETWORK_CONCURRENCY=3
 # Skip Puppeteer Chrome download (not needed for build, saves time and network)
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 # Force clean install to ensure CVE fixes are applied
+# ================================================================
+# SECURITY FIX: Force pnpm.overrides BEFORE install — fixes 20 Trivy CVEs
+# ================================================================
+RUN node -e "const fs=require('fs'),path=require('path');   const OV={'hono':'>=4.12.4','@hono/node-server':'>=1.19.10',     'minimatch':'>=10.2.3','glob':'>=11.1.0','effect':'>=3.20.0',     'picomatch':'>=4.0.4','tar':'>=7.5.11','lodash':'>=4.18.0'};   ['.','web','worker','packages/shared','packages/config'].forEach(d=>{     const p=path.join(d,'package.json');     if(!fs.existsSync(p))return;     try{const pkg=JSON.parse(fs.readFileSync(p,'utf8'));       if(!pkg.pnpm)pkg.pnpm={};       pkg.pnpm.overrides=Object.assign({},pkg.pnpm.overrides||{},OV);       fs.writeFileSync(p,JSON.stringify(pkg,null,2));       console.log('patched:',p);}catch(e){console.log('skip:',p,e.message);}});"
+
 RUN rm -rf node_modules/.cache pnpm-lock.yaml && \
     pnpm install --no-frozen-lockfile --force
 
