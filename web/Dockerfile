@@ -30,8 +30,10 @@ RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKare
 
 RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
 
-RUN npx tsc -p tsconfig.json && \
-    npx tsc -p tsconfig-cjs.json
+RUN npx tsc -p tsconfig.json --skipLibCheck && \
+    npx tsc -p tsconfig-cjs.json --skipLibCheck && \
+    node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.types='dist/cjs/index.d.ts';p.typings='dist/cjs/index.d.ts';fs.writeFileSync('package.json',JSON.stringify(p,null,2));" && \
+    echo "✅ kysely types field set to dist/cjs/index.d.ts"
 
 RUN ls -la dist/cjs/index.js dist/esm/index.js || \
     (echo "❌ Kysely build failed" && exit 1)
@@ -66,7 +68,11 @@ COPY --from=kysely-builder /kysely ./packages/kysely
 RUN sed -i 's|/\* webpackIgnore: true \*/||g' ./packages/kysely/src/migration/file-migration-provider.ts
 
 # Rebuild Kysely after patching
-RUN cd packages/kysely && npm install --no-save typescript@~5.9.3 --ignore-scripts && npm run build
+RUN cd packages/kysely && \
+    npm install --no-save typescript@~5.9.3 --ignore-scripts && \
+    npm run build && \
+    node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.types='dist/cjs/index.d.ts';p.typings='dist/cjs/index.d.ts';fs.writeFileSync('package.json',JSON.stringify(p,null,2));" && \
+    echo "✅ kysely package.json types patched"
 
 RUN node -e "try { \
       JSON.parse(require('fs').readFileSync('./packages/kysely/package.json', 'utf8')); \
