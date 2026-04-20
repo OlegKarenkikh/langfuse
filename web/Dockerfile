@@ -165,6 +165,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_MANUAL_SIG_HANDLE=true
 ENV CI=true
 
+# Ensure prisma.config.ts exists (required by Prisma 7+)
+RUN if [ ! -f packages/shared/prisma.config.ts ]; then \
+    printf 'import { defineConfig } from "@prisma/config";\nimport path from "path";\nexport default defineConfig({ earlyAccess: true, schema: path.join(__dirname, "prisma/schema.prisma") });' > packages/shared/prisma.config.ts && \
+    echo "stub created"; \
+  fi
+
 # DATABASE_URL is required by prisma.config.ts for Prisma Client generation
 # Set it as ENV so it's available for all commands including turbo tasks
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
