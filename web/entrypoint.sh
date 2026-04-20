@@ -25,15 +25,18 @@ if [ -z "$DIRECT_URL" ]; then
     export DIRECT_URL="${DATABASE_URL}"
 fi
 
-# Prisma 7+: --url flag removed; pass URL via env
-export PRISMA_DATABASE_URL="$DIRECT_URL"
+# Prisma 7+: datasource URL must be set via DATABASE_URL env (--url flag removed)
+export DATABASE_URL="$DIRECT_URL"
 
 if [ "$LANGFUSE_AUTO_POSTGRES_MIGRATION_DISABLED" != "true" ]; then
-    # Prisma 7+: --url flag is removed, datasource url read from PRISMA_DATABASE_URL env
-    prisma db execute --file "./packages/shared/scripts/cleanup.sql"
+    # Prisma 7+: pass URL via DATABASE_URL env; --url flag no longer supported
+    # Run cleanup SQL via stdin to avoid --url flag
+    DATABASE_URL="$DIRECT_URL" prisma db execute \
+        --file "./packages/shared/scripts/cleanup.sql" \
+        --schema "./packages/shared/prisma/schema.prisma"
 
-    export DATABASE_URL="$DIRECT_URL"
-    prisma migrate deploy --schema=./packages/shared/prisma/schema.prisma
+    DATABASE_URL="$DIRECT_URL" prisma migrate deploy \
+        --schema=./packages/shared/prisma/schema.prisma
 fi
 status=$?
 
