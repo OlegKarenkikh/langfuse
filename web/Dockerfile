@@ -167,7 +167,7 @@ ENV CI=true
 
 # Ensure prisma.config.ts exists (required by Prisma 7+)
 RUN if [ ! -f packages/shared/prisma.config.ts ]; then \
-    printf 'import { defineConfig } from "@prisma/config";\nimport path from "path";\nexport default defineConfig({ earlyAccess: true, schema: path.join(__dirname, "prisma/schema.prisma") });' > packages/shared/prisma.config.ts && \
+    printf 'import { defineConfig } from "@prisma/config";\nimport path from "path";\nexport default defineConfig({ schema: path.join(__dirname, "prisma/schema.prisma") });' > packages/shared/prisma.config.ts && \
     echo "stub created"; \
   fi
 
