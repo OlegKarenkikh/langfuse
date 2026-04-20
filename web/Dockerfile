@@ -82,6 +82,33 @@ RUN node -e "try { \
       process.exit(1); \
     }"
 
+# ============================================================
+# Security: inject pnpm.overrides before lockfile generation
+# so pnpm resolves patched versions of all transitive deps
+# ============================================================
+RUN node -e " \
+  const fs=require('fs'), path=require('path'); \
+  const overrides={ \
+    'hono':'>=4.12.4', \
+    '@hono/node-server':'>=1.19.10', \
+    'minimatch':'>=10.2.3', \
+    'glob':'>=11.1.0', \
+    'effect':'>=3.20.0', \
+    'picomatch':'>=4.0.4', \
+    'tar':'>=7.5.11', \
+    'lodash':'>=4.18.0' \
+  }; \
+  ['.','web','worker','packages/shared'].forEach(d=>{ \
+    const p=path.join(d,'package.json'); \
+    if(!fs.existsSync(p))return; \
+    const pkg=JSON.parse(fs.readFileSync(p)); \
+    if(!pkg.pnpm)pkg.pnpm={}; \
+    pkg.pnpm.overrides=Object.assign({},pkg.pnpm.overrides||{},overrides); \
+    fs.writeFileSync(p,JSON.stringify(pkg,null,2)); \
+    console.log('patched:',p); \
+  }); \
+"
+
 RUN pnpm install --lockfile-only || true
 
 RUN turbo prune --scope=web --docker
