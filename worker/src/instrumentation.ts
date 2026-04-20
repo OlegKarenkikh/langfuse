@@ -1,12 +1,14 @@
-let dd: { init: (opts: Record<string, unknown>) => void } = {
-  init: () => {},
-};
+// dd-trace is only available in Cloud (Datadog) deployments.
+// Use a safe dynamic require so the worker starts in open-source images too.
+let dd: { init: (opts: Record<string, unknown>) => void } = { init: () => {} };
 try {
-  // dd-trace is only available in Cloud deployments
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  dd = require("dd-trace");
-} catch {
-  // Not installed — skip Datadog tracing
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+  const mod = require("dd-trace");
+  if (mod && typeof mod.init === "function") {
+    dd = mod;
+  }
+} catch (_e) {
+  // dd-trace is not installed — skip Datadog tracing silently
 }
 
 import { NodeSDK } from "@opentelemetry/sdk-node";
@@ -45,7 +47,6 @@ const sdk = new NodeSDK({
     new HttpInstrumentation({
       requireParentforOutgoingSpans: true,
       ignoreIncomingRequestHook: (req) => {
-        // Ignore health checks
         return ["/api/public/health", "/api/public/ready", "/api/health"].some(
           (path) => req.url?.includes(path),
         );
