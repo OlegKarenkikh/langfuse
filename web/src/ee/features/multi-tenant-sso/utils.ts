@@ -147,7 +147,8 @@ export async function getSsoAuthProviderIdForDomain(
  * @param {SsoProviderSchema} provider - The SSO configuration from the database.
  * @returns {Provider | null} - A NextAuth Provider instance or null if parsing fails or no custom credentials are used for this SSO config.
  */
-const dbToNextAuthProvider = (provider: SsoProviderSchema): Provider | null => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const dbToNextAuthProvider = (provider: SsoProviderSchema): any => {
   // If the SsoConfig does not use custom credentials, return null as no additional provider needs to be added to NextAuth
   if (!provider.authConfig) return null;
 
