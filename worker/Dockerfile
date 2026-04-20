@@ -287,8 +287,8 @@ RUN addgroup --system --gid ${GID} expressjs && \
 
 
 # ================================================================
-# SECURITY: Patch node_modules in RUNNER stage (worker)
-# ================================================================
+
+# SECURITY: Patch global node_modules installed by npm install -g (worker)
 RUN node -e "var fs=require('fs'),path=require('path');\
 var FIXES={'hono':'4.12.4','@hono/node-server':'1.19.10',\
 'minimatch':'10.2.3','glob':'11.1.0','effect':'3.20.0',\
@@ -314,8 +314,8 @@ fs.writeFileSync(pj,JSON.stringify(pkg,null,2));\
 console.log('PATCHED:',nm,old,'->',FIXES[nm]);}}\
 catch(e){}}\
 walk(full);});}catch(e){}}\
-['node_modules','dist/node_modules'].forEach(walk);\
-console.log('Worker patch complete.');"
+['/usr/local/lib/node_modules','node_modules'].forEach(walk);\
+console.log('Worker global patch complete.');"
 
 USER expressjs
 
