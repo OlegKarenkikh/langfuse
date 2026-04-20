@@ -6,7 +6,6 @@ import { defineConfig } from "@prisma/config";
  * DATABASE_URL is injected at runtime via Docker environment variables.
  */
 export default defineConfig({
-  earlyAccess: true,
   schema: "./prisma/schema.prisma",
   datasource: {
     url: process.env.DATABASE_URL ?? process.env.DIRECT_URL ?? "",
