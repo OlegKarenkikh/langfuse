@@ -1,4 +1,14 @@
-import dd from "dd-trace";
+let dd: { init: (opts: Record<string, unknown>) => void } = {
+  init: () => {},
+};
+try {
+  // dd-trace is only available in Cloud deployments
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  dd = require("dd-trace");
+} catch {
+  // Not installed — skip Datadog tracing
+}
+
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { IORedisInstrumentation } from "@opentelemetry/instrumentation-ioredis";
