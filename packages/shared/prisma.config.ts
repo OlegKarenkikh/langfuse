@@ -1,8 +1,8 @@
-import { defineConfig } from "prisma/config";
+import { defineConfig } from "@prisma/config";
 
 /**
- * Prisma 7+ requires datasource.url to be configured here
- * (the --url CLI flag was removed in v7).
+ * Prisma 7+ requires datasource.url to be configured here.
+ * The --url CLI flag was removed in v7.
  * DATABASE_URL is injected at runtime via Docker environment variables.
  */
 export default defineConfig({
