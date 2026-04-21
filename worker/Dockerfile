@@ -1,7 +1,7 @@
 # ============================================
 # Stage 1: Alpine Base with Security Updates
 # ============================================
-FROM --platform=${TARGETPLATFORM:-linux/amd64} node:24-alpine AS alpine
+FROM --platform=${TARGETPLATFORM:-linux/amd64} olegkarenkikh/node-secure:24-alpine AS alpine
 
 # Update Alpine packages to fix CVE vulnerabilities
 # Force busybox update to fix CVE-2025-608766
@@ -54,6 +54,8 @@ RUN rm -rf node_modules test site example docs .github
 # ============================================
 FROM alpine AS base
 
+ENV COREPACK_ENABLE_STRICT=0
+
 # Install Turbo (latest stable)
 RUN npm install turbo@^2.7.1 --global
 
@@ -61,7 +63,7 @@ RUN npm install turbo@^2.7.1 --global
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && \
-    corepack prepare pnpm@9.15.1 --activate
+    COREPACK_ENABLE_STRICT=0 corepack prepare pnpm@10.11.1 --activate
 
 # ============================================
 # Stage 4: Prune Workspace
@@ -266,7 +268,7 @@ RUN node -e "var fs=require('fs'),path=require('path');var FIXES={'hono':'4.12.4
 # (glob@10.4.5, minimatch@9.0.5, tar@6.2.1, pnpm@9.15.1 in corepack cache)
 # This cache is only needed during build, NOT at runtime
 # ================================================================
-RUN rm -rf /root/.cache/node/corepack /root/.npm/_npx 2>/dev/null || true
+RUN rm -rf /root/.cache /root/.npm/_npx /root/.npm/_cacache /tmp/* 2>/dev/null || true
 
 # SECURITY: Force kysely 0.28.14 in runtime image (CVE-2026-32763, CVE-2026-33468)
 RUN find /app -name package.json 2>/dev/null | xargs grep -l "kysely" | xargs -r sed -i "s/\"version\": \"0\.28\.[0-9]*/\"version\": \"0.28.14\"/" || true
