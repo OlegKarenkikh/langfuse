@@ -2,3 +2,4 @@
 skip = .git,*.pdf,*.svg,package-lock.json,*.prisma,pnpm-lock.yaml
 ignore-words-list = afterall,vertx,notIn,alue,allTime
 
+pris
