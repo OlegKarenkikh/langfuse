@@ -98,7 +98,7 @@ jobs:
           MAX=${{ env.MAX_ITER }}
           TAG="${{ env.IMAGE_TAG }}"
           IMAGE="${{ env.WEB_IMAGE }}:${TAG}"
-          
+
           for i in $(seq 1 $MAX); do
             echo ""
             echo "══════════════════════════════════════════"
@@ -205,7 +205,7 @@ jobs:
           MAX=${{ env.MAX_ITER }}
           TAG="${{ env.IMAGE_TAG }}"
           IMAGE="${{ env.WORKER_IMAGE }}:${TAG}"
-          
+
           for i in $(seq 1 $MAX); do
             echo ""
             echo "══════════════════════════════════════════"
@@ -313,4 +313,3 @@ jobs:
             echo "║  WORKER: ❌ Не прошёл (см. артефакт trivy-report-worker)║"
           fi
           echo "╚═══════════════════════════════════════════════════════╝"
-

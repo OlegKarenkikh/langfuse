@@ -1,8 +1,8 @@
 // dd-trace is only available in Cloud (Datadog) deployments.
 // Use a safe dynamic require so the worker starts in open-source images too.
-let dd: { init: (opts: Record<string, unknown>) => void } = { init: () => {} };
+let dd: { init: () => void } = { init: () => {} };
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+  // eslint-disable-next-line
   const mod = require("dd-trace");
   if (mod && typeof mod.init === "function") {
     dd = mod;
