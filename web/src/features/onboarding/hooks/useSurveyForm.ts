@@ -4,7 +4,6 @@ import type { SurveyFormData } from "../lib/surveyTypes";
 import { surveyReducer, initialSurveyState } from "../lib/surveyReducer";
 import { SURVEY_QUESTIONS, TOTAL_STEPS } from "../lib/questions";
 import { api } from "@/src/utils/api";
-import { SurveyName } from "@prisma/client";
 import { useSession } from "next-auth/react";
 import { showErrorToast } from "@/src/features/notifications/showErrorToast";
 import { showSuccessToast } from "@/src/features/notifications/showSuccessToast";
@@ -87,7 +86,7 @@ export function useSurveyForm() {
 
       try {
         await createSurveyMutation.mutateAsync({
-          surveyName: SurveyName.USER_ONBOARDING,
+          surveyName: "USER_ONBOARDING" as any,
           response: transformedResponse,
           orgId: session?.user?.organizations?.[0]?.id,
         });

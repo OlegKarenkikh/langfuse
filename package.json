@@ -34,9 +34,12 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
     "@release-it/bumper": "^7.0.5",
+    "@types/pg": "^8.20.0",
     "dotenv-cli": "^7.4.4",
     "husky": "^9.1.7",
+    "pg": "^8.20.0",
     "prettier": "^3.6.2",
     "release-it": "^19.0.4",
     "turbo": "^2.7.1"
@@ -143,7 +146,9 @@
       "minimatch": ">=10.2.3",
       "effect": ">=3.20.0",
       "picomatch": ">=4.0.4",
-      "lodash": ">=4.18.0"
+      "lodash": ">=4.18.0",
+      "bullmq": "5.34.10",
+      "ioredis": "5.8.2"
     },
     "patchedDependencies": {
       "next-auth@4.24.12": "patches/next-auth@4.24.12.patch"
@@ -151,6 +156,8 @@
   },
   "dependencies": {
     "@prisma/client": "^7.2.0",
+    "bullmq": "^5.34.10",
+    "ioredis": "^5.8.2",
     "prisma-kysely": "^1.8.0"
   }
 }
