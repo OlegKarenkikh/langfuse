@@ -24,11 +24,14 @@ RUN apk add --no-cache git
 WORKDIR /kysely
 
 RUN git clone https://github.com/OlegKarenkikh/kysely.git . && \
-    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+    git checkout 6ad34b3f5f3e60a585ddacce1fb1cac2f7005b0e
 
 RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
 
 RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
+
+RUN sed -i 's/args\[0\]\.map(parseOrderByItem)/args[0].map((expr: any) => parseOrderByItem(expr))/g' src/parser/order-by-parser.ts
+RUN sed -i 's/extends OrderByInterface<DB, TB, never>/extends OrderByInterface<DB, TB, {}>/g' src/query-builder/update-query-builder.ts
 
 RUN npx tsc -p tsconfig.json --skipLibCheck && \
     npx tsc -p tsconfig-cjs.json --skipLibCheck && \
@@ -70,7 +73,7 @@ COPY --from=kysely-builder /kysely ./packages/kysely
 RUN sed -i 's|/\* webpackIgnore: true \*/||g' ./packages/kysely/src/migration/file-migration-provider.ts
 
 # Rebuild Kysely after patching
-RUN cd packages/kysely && \
+RUN cd packages/kysely && mkdir -p dist/esm dist/cjs && \
     npm install --no-save typescript@~5.9.3 --ignore-scripts && \
     npm run build && \
     node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.types='dist/cjs/index.d.ts';p.typings='dist/cjs/index.d.ts';fs.writeFileSync('package.json',JSON.stringify(p,null,2));" && \
@@ -253,7 +256,7 @@ RUN if find node_modules -name ".prisma" -type d 2>/dev/null | head -1 | grep -q
     fi
 
 # Build web application with optimized memory settings
-ENV NODE_OPTIONS='--max-old-space-size=3072'
+ENV NODE_OPTIONS='--max-old-space-size=2048'
 ENV NEXT_BUILD_OPTIMIZE=1
 ENV NODE_ENV=production
 
@@ -272,7 +275,7 @@ RUN echo "=== Build Environment Check ===" && \
 
 ENV NEXT_OUTPUT_MODE=standalone
 RUN echo "=== Starting Next.js build with webpack (standalone mode) ===" && \
-    NODE_OPTIONS='--max-old-space-size=3072' \
+    NODE_OPTIONS='--max-old-space-size=2048' \
     turbo run build --filter=web... 2>&1 | tee /tmp/build.log; \
     BUILD_EXIT_CODE=$?; \
     if [ $BUILD_EXIT_CODE -ne 0 ]; then \

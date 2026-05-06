@@ -11,7 +11,23 @@ import {
   PostgresQueryCompiler,
 } from "kysely";
 import { DB } from ".";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { logger } from "./server";
+
+// Keep a single global pool to prevent connection leaks during Next.js Hot Module Replacement (HMR)
+const globalForPrisma = globalThis as unknown as {
+  prismaGlobal: PrismaClient | undefined;
+  kyselyPrismaGlobal: { $kysely: Kysely<DB> } | undefined;
+  pgPoolGlobal: Pool | undefined;
+};
+
+// Initialize pool outside createPrismaInstance
+const pool =
+  globalForPrisma.pgPoolGlobal ??
+  new Pool({ connectionString: process.env.DATABASE_URL });
+if (process.env.NODE_ENV !== "production") globalForPrisma.pgPoolGlobal = pool;
+const adapter = new PrismaPg(pool);
 
 export class PrismaClientSingleton {
   private static instance: PrismaClient;
@@ -30,11 +46,7 @@ export class PrismaClientSingleton {
 const createPrismaInstance = () => {
   // @ts-ignore - Prisma 7 type issue with datasources in monorepo
   const client = new PrismaClient({
-    // datasources: {
-    //   db: {
-    //     url: process.env.DATABASE_URL,
-    //   },
-    // },
+    adapter,
     log: [
       { emit: "event", level: "query" },
       { emit: "event", level: "error" },

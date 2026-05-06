@@ -26,7 +26,7 @@ WORKDIR /kysely
 
 # Clone your secure kysely fork
 RUN git clone https://github.com/OlegKarenkikh/kysely.git . && \
-    git checkout 64a12c470b1a5387b842acf09094e2aa1e4149b0
+    git checkout 6ad34b3f5f3e60a585ddacce1fb1cac2f7005b0e
 
 # Fix repository URL in package.json
 RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKarenkikh/kysely.git|' package.json
@@ -35,6 +35,9 @@ RUN sed -i 's|git://github.com/kysely-org/kysely.git|https://github.com/OlegKare
 RUN npm install --no-save typescript@~5.9.3 --ignore-scripts
 
 # Compile TypeScript to JavaScript (both ESM and CJS)
+RUN sed -i 's/args\[0\]\.map(parseOrderByItem)/args[0].map((expr: any) => parseOrderByItem(expr))/g' src/parser/order-by-parser.ts
+RUN sed -i 's/extends OrderByInterface<DB, TB, never>/extends OrderByInterface<DB, TB, {}>/g' src/query-builder/update-query-builder.ts
+
 RUN npx tsc -p tsconfig.json --skipLibCheck && \
     npx tsc -p tsconfig-cjs.json --skipLibCheck && \
     node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.types='dist/cjs/index.d.ts';p.typings='dist/cjs/index.d.ts';fs.writeFileSync('package.json',JSON.stringify(p,null,2));" && \

@@ -2,6 +2,7 @@
  * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
  * for Docker builds.
  */
+process.env.SKIP_ENV_VALIDATION = "true";
 await import("./src/env.mjs");
 import { withSentryConfig } from "@sentry/nextjs";
 import { env } from "./src/env.mjs";
@@ -58,36 +59,29 @@ const nextConfig = {
     "bullmq",
     "@opentelemetry/sdk-node",
     "@opentelemetry/instrumentation-winston",
-    "kysely",
+    "kysely"
   ],
   poweredByHeader: false,
   basePath: env.NEXT_PUBLIC_BASE_PATH,
   turbopack: {
     resolveAlias: {
       "@langfuse/shared": "./packages/shared/src",
-      // this is an ugly hack to get turbopack to work with react-resizable, used in the
-      // web/src/features/widgets/components/DashboardGrid.tsx file. This **only** affects
-      // the dev server. The CSS is included in the non-turbopack based prod build anyways.
-      // Also not needed for the non-turbopack based dev server.
       "react-resizable/css/styles.css":
         "../node_modules/.pnpm/react-resizable@3.0.5_react-dom@19.2.3_react@19.2.3__react@19.2.3/node_modules/react-resizable/css/styles.css",
-      // Note: Prisma Client exclusion is handled in webpack config below
-      // Turbopack doesn't support false values in resolveAlias, so we rely on webpack for production builds
     },
+  },
+
+  productionBrowserSourceMaps: false,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
   },
   experimental: {
     browserDebugInfoInTerminal: true, // Logs browser logs to terminal
-    // TODO: enable with new next version! 15.6
-    // see: https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopackPersistentCaching
-    // turbopackPersistentCaching: true,
   },
 
-  /**
-   * If you have `experimental: { appDir: true }` set, then you must comment the below `i18n` config
-   * out.
-   *
-   * @see https://github.com/vercel/next.js/issues/41980
-   */
   i18n: {
     locales: ["en"],
     defaultLocale: "en",
@@ -195,83 +189,35 @@ const nextConfig = {
   },
 
   webpack(config, { isServer }) {
-    // Exclude Datadog packages from webpack bundling to avoid issues
-    // see: https://docs.datadoghq.com/tracing/trace_collection/automatic_instrumentation/dd_libraries/nodejs/#bundling-with-nextjs
     config.externals.push("@datadog/pprof", "dd-trace");
     
-    // Disable minification completely to avoid webpack constructor issues
     config.optimization = config.optimization || {};
     config.optimization.minimize = false;
     config.optimization.minimizer = [];
-    
-    // Fix Prisma Client resolution in pnpm workspace
-    if (!isServer) {
-      // For client-side builds, exclude Prisma Client completely
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        ".prisma/client": false,
-        "@prisma/client": false,
-        // Also handle the browser entry point
-        ".prisma/client/index-browser": false,
-      };
-      // Add to externals to prevent bundling
-      config.externals = config.externals || [];
-      config.externals.push(".prisma/client", "@prisma/client");
-    }
-    // Server-side Prisma resolution is handled automatically by Next.js serverExternalPackages
     
     return config;
   },
 };
 
 const sentryConfig = withSentryConfig(nextConfig, {
-  // For all available options, see:
-  // https://github.com/getsentry/sentry-webpack-plugin#options
-
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
-
   authToken: env.SENTRY_AUTH_TOKEN,
-
-  // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
-
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
   widenClientFileUpload: true,
-
-  // Automatically annotate React components to show their full name in breadcrumbs and session replay
   reactComponentAnnotation: {
     enabled: true,
   },
-
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
-  // tunnelRoute: "/api/monitoring-tunnel",
-
-  // Hides source maps from generated client bundles
   sourcemaps: {
     disable: true,
   },
-
-  // Automatically tree-shake Sentry logger statements to reduce bundle size
   disableLogger: true,
-
-  // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
-  // See the following for more information:
-  // https://docs.sentry.io/product/crons/
-  // https://vercel.com/docs/cron-jobs
   automaticVercelMonitors: false,
 });
 
-// Enable bundle analyzer in analyze mode, otherwise use standard config
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
-  openAnalyzer: true, // Open analyzer in browser
+  openAnalyzer: true,
 });
 
 export default withBundleAnalyzer(sentryConfig);

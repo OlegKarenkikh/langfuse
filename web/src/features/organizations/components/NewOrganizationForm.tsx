@@ -24,7 +24,7 @@ import { api } from "@/src/utils/api";
 import { useSession } from "next-auth/react";
 import { organizationFormSchema } from "@/src/features/organizations/utils/organizationNameSchema";
 import { usePostHogClientCapture } from "@/src/features/posthog-analytics/usePostHogClientCapture";
-import { SurveyName } from "@prisma/client";
+import type { SurveyName } from "@langfuse/shared";
 import { useLangfuseCloudRegion } from "@/src/features/organizations/hooks";
 
 export const NewOrganizationForm = ({
