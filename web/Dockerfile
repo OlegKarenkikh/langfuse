@@ -464,7 +464,7 @@ console.log('Global patch complete.');"
 # (glob@10.4.5, minimatch@9.0.5, tar@6.2.1, pnpm@9.15.1 in corepack cache)
 # This cache is only needed during build, NOT at runtime
 # ================================================================
-RUN rm -rf /root/.cache/node/corepack /root/.npm/_npx 2>/dev/null || true
+RUN rm -rf /root/.cache/node/corepack /root/.npm/_npx /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack 2>/dev/null || true
 
 # SECURITY: Force kysely 0.28.14 in runtime image (CVE-2026-32763, CVE-2026-33468)
 RUN find /app -name package.json 2>/dev/null | xargs grep -l "kysely" | xargs -r sed -i "s/\"version\": \"0\.28\.[0-9]*/\"version\": \"0.28.14\"/" || true

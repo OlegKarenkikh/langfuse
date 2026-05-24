@@ -5,7 +5,9 @@
 # External connections from other machines will not be able to reach these services directly.
 services:
   langfuse-worker:
-    image: docker.io/langfuse/langfuse-worker:3
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
     restart: always
     depends_on: &langfuse-depends-on
       postgres:
@@ -63,7 +65,9 @@ services:
       SMTP_CONNECTION_URL: ${SMTP_CONNECTION_URL:-}
 
   langfuse-web:
-    image: docker.io/langfuse/langfuse:3
+    build:
+      context: .
+      dockerfile: web/Dockerfile
     restart: always
     depends_on: *langfuse-depends-on
     ports:
@@ -124,7 +128,7 @@ services:
       start_period: 1s
 
   redis:
-    image: docker.io/redis:7
+    image: public.ecr.aws/docker/library/redis:7
     restart: always
     # CHANGEME: row below to secure redis password
     command: >
@@ -138,7 +142,7 @@ services:
       retries: 10
 
   postgres:
-    image: docker.io/postgres:${POSTGRES_VERSION:-17}
+    image: public.ecr.aws/docker/library/postgres:${POSTGRES_VERSION:-17}
     restart: always
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
