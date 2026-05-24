@@ -44,7 +44,7 @@ services:
       - default
 
   redis:
-    image: docker.io/public.ecr.aws/docker/library/redis:7.2.4
+    image: docker.io/redis:7.2.4
     container_name: ${REDIS_CONTAINER_NAME:-langfuse-redis}
     restart: always
     command: >
